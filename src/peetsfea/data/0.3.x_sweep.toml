@@ -1,0 +1,323 @@
+# 0.3.9.0 SSW sampled authoring input.
+# ----------------------------------------------------------------------------
+# 이 파일은 0.3.9.0 SSW coil sweep의 SSOT다.
+# TX/RX 각각의 sampled coil 변수, fixed compatibility 변수,
+# shared layout 변수와 shared ferrite 변수를 포함하며,
+# 자유변수 기준 총 18차원이다.
+#
+# Range 형식:
+# - [true, start, end, count]는 integer 후보 range다.
+# - [false, start, end, count]는 float 후보 range다.
+# - fixed TOML에서는 같은 public field를 [*, value, value, 1]로 freeze한다.
+
+spec_version = "0.3.9.0"
+schema_id = "peetsfea.ssw_coil.step.v1"
+runtime_compatible = false
+
+[design]
+units = "mm"
+
+[backend]
+authoring_tool = "cadquery"
+solver_tool = "hfss"
+interchange_format = "step"
+
+# ----------------------------------------------------------------------------
+# Fixed geometry dimensions
+# ----------------------------------------------------------------------------
+
+[fixed_dimensions.fr4_thickness_mm]
+range = [false, 0.24, 0.24, 1]
+description = "FR4 thickness(mm)"
+
+[fixed_dimensions.copper_thickness_mm]
+range = [false, 0.07, 0.07, 1]
+description = "Copper thickness(mm)"
+
+[fixed_dimensions.port_length_mm]
+range = [false, 2.0, 2.0, 1]
+description = "Port landing gap length(mm)"
+
+[fixed_dimensions.port_landing_pad_mm]
+range = [false, 5.5, 5.5, 1]
+description = "SSW/AEDT nominal port landing pad width(mm); normal/spiral pad follows realized trace width"
+
+[fixed_dimensions.port_landing_drop_mm]
+range = [false, 0.24, 0.24, 1]
+description = "Port landing drop distance(mm)"
+
+[fixed_dimensions.port_landing_overlap_mm]
+range = [false, 0.01, 0.01, 1]
+description = "Port landing overlap(mm)"
+
+[fixed_dimensions.width_max_mm]
+range = [false, 1080.0, 1080.0, 1]
+description = "Maximum coil width(mm)"
+
+[fixed_dimensions.height_max_mm]
+range = [false, 180.0, 180.0, 1]
+description = "Maximum coil height(mm)"
+
+[fixed_dimensions.tx_rx_min_distance_mm]
+range = [false, 50.0, 200.0, 100]
+description = "Minimum edge-to-edge distance between TX and RX coils(mm)"
+
+[fixed_dimensions.mull_ferrite_thickness_mm]
+range = [false, 0.12, 0.12, 1]
+description = "MULL ferrite sheet thickness(mm)"
+
+# ----------------------------------------------------------------------------
+# MULL ferrite sheet placement
+# ----------------------------------------------------------------------------
+
+[ferrite.tx_mull_is_enabled]
+range = [true, 1, 1, 1]
+description = "TX MULL ferrite sheet enable flag"
+
+[ferrite.tx_mull_position_ratio]
+range = [false, 0.0, 0.9, 24]
+description = "TX MULL ferrite Z position ratio: 0 tx_region_max bottom, 1 TX coil-adjacent"
+
+[ferrite.tx_mull_sheet_count]
+range = [true, 1, 5, 5]
+description = "TX MULL ferrite sheet count, stacked downward with a one-thickness gap between sheets"
+
+[ferrite.rx_mull_is_enabled]
+range = [true, 0, 0, 1]
+description = "RX MULL ferrite sheet enable flag"
+
+[ferrite.rx_mull_position_ratio]
+range = [false, 0.0, 1.0, 11]
+description = "RX MULL ferrite X position ratio: 0 rx_region_max X-min, 1 RX coil-adjacent"
+
+# ----------------------------------------------------------------------------
+# Non-model object registry
+# ----------------------------------------------------------------------------
+
+[[non_model_objects]]
+id = "tv"
+kind = "tv"
+primitive = "box"
+present = true
+non_model = true
+material = "vacuum"
+plane = "YZ"
+origin_xyz = [0.0, -921.0, 340.0]
+size_xyz = [9.0, 1842.0, 1055.0]
+transparency = 0.6
+
+[[non_model_objects]]
+id = "tx_region"
+kind = "tx_region"
+primitive = "box"
+present = true
+non_model = true
+material = "vacuum"
+plane = "XY"
+origin_xyz = [0.0, -921.0, 0.0]
+size_xyz = [480.0, 1842.0, 290.0]
+transparency = 0.2
+
+[[non_model_objects]]
+id = "tx_region_max"
+kind = "tx_region_max"
+primitive = "box"
+present = true
+non_model = true
+material = "vacuum"
+plane = "XY"
+# Largest TX coil XY bounds in this sweep. The region thickness
+# is capped at 55 mm, and export resolves this box to the current
+# TX placement.
+origin_xyz = [0.0, -720.21, 0.0]
+size_xyz = [240.14, 1440.42, 55.0]
+transparency = 0.35
+
+[[non_model_objects]]
+id = "rx_region_max"
+kind = "rx_region_max"
+primitive = "box"
+present = true
+non_model = true
+material = "vacuum"
+plane = "YZ"
+# Largest RX coil YZ bounds in this sweep. The region thickness is
+# capped at 5 mm.
+origin_xyz = [-0.07, -720.21, 339.93]
+size_xyz = [5.0, 1440.42, 240.14]
+transparency = 0.35
+
+# ----------------------------------------------------------------------------
+# Modeled object registry
+# ----------------------------------------------------------------------------
+
+[[modeled_objects]]
+object_id = "tx_ssw_coil"
+role = "tx_ssw_coil"
+material = "composite"
+model_state = true
+
+[modeled_objects.width_ratio]
+range = [false, 0.0555556, 1.0, 1000]
+description = "TX SSW coil width ratio against fixed_dimensions.width_max_mm"
+
+[modeled_objects.height_ratio]
+range = [false, 0.0555556, 1.0, 500]
+description = "TX SSW coil height ratio against fixed_dimensions.height_max_mm"
+
+[modeled_objects.is_ssw_enabled]
+range = [true, 1, 1, 1]
+description = "TX SSW enable flag"
+
+[modeled_objects.turn_n_int]
+range = [true, 2, 10, 10]
+description = "TX SSW band count"
+
+[modeled_objects.gap_ratio]
+range = [false, 0.1, 0.9, 50]
+description = "TX SSW pitch 중 gap 비율"
+
+[modeled_objects.void_area_ratio]
+range = [false, 0.1, 0.9, 50]
+description = "TX 중앙 void area ratio"
+
+[modeled_objects.void_profile]
+range = [true, 1, 1, 1]
+description = "TX void profile: 0 rectangular void, 1 scaled void"
+
+[modeled_objects.no_ssw_qturn_start_int]
+range = [true, 0, 0, 1]
+description = "TX non-SSW quarter-turn start index; fixed disabled for 0.3.8.x SSW"
+
+[modeled_objects.no_ssw_qturn_n_int]
+range = [true, 0, 0, 1]
+description = "TX non-SSW quarter-turn count; fixed disabled for 0.3.8.x SSW"
+
+[modeled_objects.pcb_gap_mm]
+range = [false, 1.0, 10.0, 50]
+description = "TX SSW two-PCB gap(mm)"
+
+[modeled_objects.twist_factor]
+range = [true, 1, 10, 10]
+description = "TX SSW band pitch shift per loop"
+
+[[modeled_objects]]
+object_id = "tx_under_coil"
+role = "tx_under_coil"
+material = "composite"
+model_state = true
+
+[modeled_objects.is_under_coil_enabled]
+range = [true, 0, 0, 1]
+description = "TX under-coil enable flag"
+
+[modeled_objects.width_ratio]
+range = [false, 0.45, 0.45, 1]
+description = "TX under-coil width ratio against fixed_dimensions.width_max_mm"
+
+[modeled_objects.height_ratio]
+range = [false, 0.25, 0.25, 1]
+description = "TX under-coil height ratio against fixed_dimensions.height_max_mm"
+
+[modeled_objects.turn_n_int]
+range = [true, 2, 2, 1]
+description = "TX under-coil spiral turn count"
+
+[modeled_objects.gap_ratio]
+range = [false, 0.44, 0.44, 1]
+description = "TX under-coil pitch 중 gap 비율"
+
+[modeled_objects.void_area_ratio]
+range = [false, 0.35, 0.35, 1]
+description = "TX under-coil 중앙 void area ratio"
+
+[modeled_objects.void_profile]
+range = [true, 1, 1, 1]
+description = "TX under-coil void profile: 0 rectangular void, 1 scaled void"
+
+[modeled_objects.no_ssw_qturn_start_int]
+range = [true, 1, 1, 1]
+description = "TX under-coil non-SSW quarter-turn start index; fixed at 1 for 0.3.8.x"
+
+[modeled_objects.no_ssw_qturn_n_int]
+range = [true, 0, 0, 1]
+description = "TX under-coil non-SSW quarter-turn count; fixed at 0 for 0.3.8.x"
+
+[[modeled_objects]]
+object_id = "rx_ssw_coil"
+role = "rx_ssw_coil"
+material = "composite"
+model_state = true
+
+[modeled_objects.width_ratio]
+range = [false, 0.0555556, 1.0, 1000]
+description = "RX SSW coil width ratio against fixed_dimensions.width_max_mm"
+
+[modeled_objects.height_ratio]
+range = [false, 0.0555556, 1.0, 500]
+description = "RX SSW coil height ratio against fixed_dimensions.height_max_mm"
+
+[modeled_objects.is_ssw_enabled]
+range = [true, 1, 1, 1]
+description = "RX SSW enable flag; fixed enabled from 0.3.8.x"
+
+[modeled_objects.turn_n_int]
+range = [true, 1, 10, 10]
+description = "RX SSW band count"
+
+[modeled_objects.gap_ratio]
+range = [false, 0.1, 0.9, 50]
+description = "RX SSW pitch 중 gap 비율"
+
+[modeled_objects.void_area_ratio]
+range = [false, 0.1, 0.9, 50]
+description = "RX 중앙 void area ratio"
+
+[modeled_objects.void_profile]
+range = [true, 1, 1, 1]
+description = "RX void profile: 0 rectangular void, 1 scaled void"
+
+[modeled_objects.no_ssw_qturn_start_int]
+range = [true, 0, 0, 1]
+description = "RX non-SSW quarter-turn start index; fixed disabled for 0.3.8.x SSW"
+
+[modeled_objects.no_ssw_qturn_n_int]
+range = [true, 0, 0, 1]
+description = "RX non-SSW quarter-turn count; fixed disabled for 0.3.8.x SSW"
+
+[modeled_objects.pcb_gap_mm]
+range = [false, 1.0, 4.5, 25]
+description = "RX SSW two-PCB gap(mm)"
+
+[modeled_objects.twist_factor]
+range = [true, 1, 10, 10]
+description = "RX SSW band pitch shift per loop"
+
+[constraints]
+
+[[constraints.rules]]
+id = "tx_ssw_single_conductor"
+kind = "comparison"
+message = "TX SSW turn_n_int and twist_factor must form exactly one conductor."
+enabled = true
+lhs = { func = "ssw_conductor_component_count(tx_ssw_coil)" }
+op = "=="
+rhs = { value = 1 }
+
+[[constraints.rules]]
+id = "rx_ssw_single_conductor"
+kind = "comparison"
+message = "RX SSW turn_n_int and twist_factor must form exactly one conductor when RX SSW is enabled."
+enabled = true
+lhs = { func = "ssw_conductor_component_count(rx_ssw_coil)" }
+op = "=="
+rhs = { value = 1 }
+
+[[constraints.rules]]
+id = "rx_ssw_turn_count_gt_one_when_enabled"
+kind = "comparison"
+message = "RX SSW turn_n_int must be greater than 1 when RX SSW is enabled."
+enabled = true
+lhs = { path = "modeled_objects.rx_ssw_coil.turn_n_int" }
+op = ">"
+rhs = { path = "modeled_objects.rx_ssw_coil.is_ssw_enabled" }

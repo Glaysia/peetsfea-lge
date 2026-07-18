@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debugpy Launch Replay"
+  short_description: "Replay this repo's launch.json run."
+  default_prompt: "Inspect this repo's .vscode/launch.json and tasks, then reproduce the selected debug configuration from the shell."

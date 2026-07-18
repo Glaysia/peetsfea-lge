@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>peetsfea — TOML에서 결정적으로 생성하는 HFSS 설계</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --bg-soft: #121a33;
+    --panel: #161f3d;
+    --border: #26315c;
+    --text: #e6ebff;
+    --muted: #9aa6c9;
+    --accent: #5b8cff;
+    --accent-2: #34d4b7;
+    --warn: #ffb454;
+    --code-bg: #0d1428;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #1a2342 0%, transparent 60%),
+      var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+  /* Hero */
+  header.hero {
+    padding: 96px 0 64px;
+    background:
+      radial-gradient(900px 500px at 15% 0%, rgba(91,140,255,.18), transparent 55%),
+      radial-gradient(700px 400px at 90% 20%, rgba(52,212,183,.14), transparent 50%);
+    border-bottom: 1px solid var(--border);
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border: 1px solid var(--border);
+    background: var(--bg-soft); border-radius: 999px;
+    font-size: 13px; color: var(--muted); letter-spacing: .02em;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 12px var(--accent-2); }
+  h1 {
+    font-size: clamp(34px, 6vw, 58px);
+    line-height: 1.1; margin: 22px 0 14px; letter-spacing: -.02em;
+  }
+  h1 .grad {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lede { font-size: clamp(17px, 2.4vw, 21px); color: var(--muted); max-width: 720px; }
+  .cta { margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 20px; border-radius: 12px; font-weight: 600; font-size: 15px;
+    border: 1px solid var(--border);
+  }
+  .btn.primary { background: linear-gradient(90deg, var(--accent), #4a7dff); border-color: transparent; color: #fff; }
+  .btn.primary:hover { text-decoration: none; filter: brightness(1.08); }
+  .btn.ghost { background: var(--bg-soft); color: var(--text); }
+  .btn.ghost:hover { text-decoration: none; border-color: var(--accent); }
+
+  /* Sections */
+  section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+  h2 { font-size: clamp(24px, 3.4vw, 32px); margin: 0 0 8px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+
+  .grid { display: grid; gap: 18px; }
+  .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 720px) { .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px;
+    transition: transform .15s ease, border-color .15s ease;
+  }
+  .card:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .card h3 { margin: 0 0 8px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .card .ico { font-size: 22px; margin-bottom: 10px; }
+
+  /* Pipeline steps */
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+  ol.steps li {
+    position: relative; padding: 18px 18px 18px 64px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  ol.steps li::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; left: 18px; top: 16px;
+    width: 32px; height: 32px; border-radius: 9px;
+    display: grid; place-items: center; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #06122c;
+  }
+  ol.steps li b { color: var(--text); }
+  ol.steps li code { color: var(--accent-2); }
+
+  /* Code blocks */
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px; overflow-x: auto;
+    font-size: 14px; line-height: 1.6;
+  }
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: .92em;
+  }
+  pre code { color: #cdd9ff; }
+  .cmt { color: #62719c; }
+  .cmd { color: var(--accent-2); }
+
+  /* contract list */
+  ul.contract { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  ul.contract li {
+    padding: 12px 16px; background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 10px; font-size: 15px;
+  }
+  ul.contract li b { color: var(--accent); }
+  ul.contract code { color: var(--accent-2); background: var(--code-bg); padding: 1px 6px; border-radius: 6px; }
+
+  .pill {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; background: rgba(52,212,183,.14);
+    color: var(--accent-2); border: 1px solid rgba(52,212,183,.3);
+  }
+
+  /* artifacts */
+  .files { display: grid; gap: 8px; }
+  .file {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 10px; font-size: 14px;
+  }
+  .file code { color: #cdd9ff; }
+  .file .tag { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+  .note {
+    margin-top: 16px; padding: 14px 18px; border-radius: 12px;
+    background: rgba(255,180,84,.08); border: 1px solid rgba(255,180,84,.3);
+    color: #ffd9a3; font-size: 14px;
+  }
+  .note b { color: var(--warn); }
+
+  footer { padding: 40px 0 60px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="badge"><span class="dot"></span> peetsfea · v0.3.8.0</span>
+    <h1>TOML 명세에서 <span class="grad">HFSS 설계</span>를<br />결정적으로 생성합니다.</h1>
+    <p class="lede">
+      peetsfea는 선언적 TOML 입력으로부터 최소 STEP 형상과 2-포트 HFSS(AEDT) 프로젝트를
+      재현 가능하게 빌드하는 Python 파이프라인입니다. headless EM setup · solve · report까지
+      하나의 결정적 경로로 이어집니다.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="#quickstart">빠른 시작 →</a>
+      <a class="btn ghost" href="#pipeline">파이프라인 보기</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- What -->
+  <section id="what">
+    <h2>무엇을 하나요</h2>
+    <p class="sub">정확히 하나의 활성 계약만 유지하는 미니멀 기준선(baseline).</p>
+    <div class="grid cols-3">
+      <div class="card">
+        <div class="ico">📐</div>
+        <h3>선언적 TOML 입력</h3>
+        <p>authoring 표면은 <code>[design]</code>과 <code>[[non_model_objects]]</code>만 허용합니다. legacy modeled-object 섹션은 파서가 거부합니다.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🧩</div>
+        <h3>최소 STEP 형상</h3>
+        <p>authored non-model box와 고정된 Tx/Rx 포트 셀을 STEP solid로 내보내고 ledger에 기록합니다.</p>
+      </div>
+      <div class="card">
+        <div class="ico">⚡</div>
+        <h3>Headless EM 경로</h3>
+        <p>STEP를 headless HFSS로 import하여 mesh · boundary · ports · setup · report 상태를 결정적으로 할당합니다.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🔁</div>
+        <h3>재현 가능한 산출물</h3>
+        <p>source / repro / dataset 스냅샷과 ledger를 남겨 동일 입력이 동일 결과를 만들도록 보장합니다.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🌀</div>
+        <h3>SSW 코일 디버그</h3>
+        <p><code>[constraints]</code> 표면으로 SSW 코일·under-coil·MULL ferrite 배치를 탐색하는 별도 디버그 입력을 제공합니다.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🛑</div>
+        <h3>Fail-Fast 계약</h3>
+        <p>PyAEDT의 <code>False</code> 반환은 즉시 raise합니다. nullable·fallback·degraded 경로를 두지 않습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pipeline -->
+  <section id="pipeline">
+    <h2>런타임 파이프라인</h2>
+    <p class="sub">TOML 한 장에서 풀이된 <code>.aedt</code>와 CSV 리포트까지.</p>
+    <ol class="steps">
+      <li><b>sample</b> — <code>entry/sample.py</code>가 source TOML을 복사하고 source/repro/dataset 스냅샷을 쓰며, <code>minimal_scene.step</code>과 <code>minimal_step_ledger.json</code>을 내보냅니다.</li>
+      <li><b>build</b> — <code>entry/build.py</code>가 manifest를 읽어 누락된 STEP를 재생성하고, headless HFSS로 import한 뒤 mesh/boundary/ports/sources/setup/report를 할당·검증하고 <code>.aedt</code>를 저장합니다.</li>
+      <li><b>solve</b> — <code>build.py --solve</code>가 <code>Setup1</code>을 실행하고 <code>Output Variables Table1</code>을 CSV로 export한 뒤 프로젝트를 다시 저장합니다.</li>
+    </ol>
+  </section>
+
+  <!-- Contract -->
+  <section id="contract">
+    <h2>현재 계약 <span class="pill">v0.3.8.0</span></h2>
+    <p class="sub">0.3.x 기준선이 활성으로 유지하는 표면.</p>
+    <ul class="contract">
+      <li><b>활성 입력:</b> <code>examples/minimal_step_two_port.toml</code></li>
+      <li><b>TOML surface:</b> <code>[design]</code> · <code>[[non_model_objects]]</code> 만 허용</li>
+      <li><b>STEP surface:</b> authored non-model box + 고정 Tx/Rx port cell (각 셀 = signal pad · reference pad · vacuum port sheet)</li>
+      <li><b>EM surface:</b> Tx 포트 1 · Rx 포트 1 · copper pad mesh · radiation boundary · <code>Setup1</code> · <code>Sweep</code> · <code>Output Variables Table1</code></li>
+      <li><b>Ports/Sources:</b> 터미널 <code>1_T1</code> / <code>2_T1</code> 고정, Tx <code>1V@0°</code> · Rx <code>0V@0°</code></li>
+      <li><b>Sweep:</b> <code>0.1MHz → 100MHz</code> log 401 포인트 interpolating + DC subrange, <code>6.78MHz</code> solve</li>
+      <li><b>SSW 제약:</b> enabled 코일은 <code>gcd(turn_n_int, twist_factor) == 1</code>, RX enabled 시 <code>turn_n_int &gt; 1</code>, TX/RX <code>void_profile</code>은 scaled profile <code>1</code>로 고정</li>
+    </ul>
+  </section>
+
+  <!-- Quickstart -->
+  <section id="quickstart">
+    <h2>빠른 시작</h2>
+    <p class="sub">모든 명령은 <code>run/</code>에서 실행합니다.</p>
+
+    <h3 style="margin:18px 0 8px;font-size:16px;color:var(--muted)">테스트 &amp; 타입 검사</h3>
+    <pre><code><span class="cmd">cd</span> run
+../.venv/bin/pytest -q ../tests
+../.venv/bin/pyright ../src ../entry ../tests</code></pre>
+
+    <h3 style="margin:24px 0 8px;font-size:16px;color:var(--muted)">최소 STEP 샘플 생성</h3>
+    <pre><code><span class="cmd">cd</span> run
+../.venv/bin/python ../entry/sample.py</code></pre>
+
+    <h3 style="margin:24px 0 8px;font-size:16px;color:var(--muted)">Setup-ready AEDT 프로젝트 빌드 &amp; solve</h3>
+    <pre><code><span class="cmd">cd</span> run
+../.venv/bin/python ../entry/build.py            <span class="cmt"># setup-ready .aedt 생성</span>
+../.venv/bin/python ../entry/build.py --solve    <span class="cmt"># solve + CSV report export</span></code></pre>
+
+    <div class="note">
+      <b>주의</b> · <code>python -O</code>는 지원하지 않습니다 (assertion이 런타임 계약의 일부).
+      AEDT/PyAEDT에 영향을 주는 변경은 반드시 실제 headless AEDT 검증을 통과해야 합니다.
+    </div>
+  </section>
+
+  <!-- Artifacts -->
+  <section id="artifacts">
+    <h2>산출물</h2>
+    <p class="sub">기본 출력 위치: <code>run/sampled/minimal/&lt;design_id&gt;/</code></p>
+    <div class="files">
+      <div class="file"><code>sampled.toml</code><span class="tag">sampled spec</span></div>
+      <div class="file"><code>&lt;design_id&gt;.source.toml</code><span class="tag">snapshot</span></div>
+      <div class="file"><code>&lt;design_id&gt;.repro.toml</code><span class="tag">snapshot</span></div>
+      <div class="file"><code>&lt;design_id&gt;.dataset.toml</code><span class="tag">snapshot</span></div>
+      <div class="file"><code>minimal_scene.step</code><span class="tag">geometry</span></div>
+      <div class="file"><code>minimal_step_ledger.json</code><span class="tag">ledger</span></div>
+      <div class="file"><code>&lt;design_id&gt;.aedt</code><span class="tag">HFSS project</span></div>
+      <div class="file"><code>minimal_imported_ledger.json</code><span class="tag">ledger</span></div>
+      <div class="file"><code>Output_Variables_Table1.csv</code><span class="tag">--solve 시</span></div>
+    </div>
+  </section>
+
+  <!-- Docs -->
+  <section id="docs" style="border-bottom:none;">
+    <h2>더 알아보기</h2>
+    <p class="sub">프로젝트 문서.</p>
+    <div class="grid cols-2">
+      <a class="card" href="../README.md"><h3>README ↗</h3><p>한국어 개요와 계약. 영문은 README.en.md.</p></a>
+      <a class="card" href="../GOAL.md"><h3>GOAL ↗</h3><p>tx_under_coil 형상 의도와 acceptance criteria.</p></a>
+      <a class="card" href="runner-integration.md"><h3>Runner Integration ↗</h3><p>0.3.8.0 공개 API 계약과 패키징.</p></a>
+      <a class="card" href="palace-second-backend-roadmap.md"><h3>Palace Roadmap ↗</h3><p>두 번째 백엔드 로드맵.</p></a>
+      <a class="card" href="../AGENTS.md"><h3>AGENTS ↗</h3><p>작업 규칙과 검증 정책.</p></a>
+      <a class="card" href="../CODE_COMMANDMENTS.md"><h3>Commandments ↗</h3><p>fail-fast 코드 계명.</p></a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>peetsfea · Minimal STEP-based two-port HFSS baseline · MIT License</span>
+    <span>Python 3.12 · pyaedt 0.25.1 · build123d</span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug SSW viewer (view.py --debug)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/entry/view.py",
+      "args": ["--debug"],
+      "cwd": "${workspaceFolder}/run",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "preLaunchTask": "prepare-0.3.0-ssw-debug",
+      "env": {
+        "OCP_PORT": "3939",
+        "TERM": "xterm-256color",
+        "NO_COLOR": ""
+      }
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SSW "긴 변 = Y축" 규약 제거 (0.3.8.0) — 잘못 생긴 contract</title>
+<style>
+  :root{--bg:#0b1020;--panel:#161f3d;--soft:#121a33;--bd:#26315c;--tx:#e6ebff;--mut:#9aa6c9;
+        --ac:#5b8cff;--ac2:#34d4b7;--warn:#ffb454;--ok:#34d4b7;--todo:#ffb454;--code:#0d1428;--bad:#ff7878;}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 560px at 82% -8%,#1a2342 0,transparent 60%),var(--bg);
+       color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.65}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+  header{padding:64px 0 28px;border-bottom:1px solid var(--bd)}
+  .badge{display:inline-flex;gap:8px;align-items:center;padding:5px 12px;border:1px solid var(--bd);
+         background:var(--soft);border-radius:999px;font-size:12.5px;color:var(--mut)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 10px var(--warn)}
+  h1{font-size:clamp(26px,4.4vw,40px);line-height:1.15;margin:18px 0 8px;letter-spacing:-.02em}
+  h1 .g{background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:var(--mut);max-width:780px;font-size:16px}
+  section{padding:34px 0;border-bottom:1px solid var(--bd)}
+  h2{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+  h2 .n{color:var(--ac2);font-variant-numeric:tabular-nums}
+  .sub{color:var(--mut);margin:0 0 18px;font-size:14.5px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  th,td{padding:9px 12px;border:1px solid var(--bd);text-align:left;vertical-align:top}
+  th{background:var(--soft);color:var(--mut);font-weight:600}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:.92em;background:var(--code);
+       padding:1px 6px;border-radius:6px;color:#cdd9ff}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700}
+  .done{background:rgba(52,212,183,.15);color:var(--ok);border:1px solid rgba(52,212,183,.35)}
+  .todo{background:rgba(255,180,84,.13);color:var(--todo);border:1px solid rgba(255,180,84,.35)}
+  .bad{background:rgba(255,120,120,.13);color:var(--bad);border:1px solid rgba(255,120,120,.4)}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:18px;margin:10px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .note{margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(255,180,84,.08);
+        border:1px solid rgba(255,180,84,.3);color:#ffd9a3;font-size:13.5px}
+  ul{margin:6px 0 0;padding-left:20px;color:var(--mut)}
+  ul li{margin:3px 0}
+  .eq{background:var(--code);border:1px solid var(--bd);border-radius:10px;padding:12px 16px;color:#cdd9ff;
+      font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:13px;overflow-x:auto;white-space:pre}
+  footer{padding:28px 0 56px;color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <span class="badge"><span class="dot"></span> peetsfea · 설계 노트 · SSW geometry contract</span>
+  <h1>SSW <span class="g">"긴 변 = Y축"</span> 규약은 잘못 생긴 것 — 0.3.8.0에서 제거</h1>
+  <p class="lede">TX/RX SSW 코일의 긴 변이 Y축을 따라야 한다는 <code>_validate_scene_contract</code>의
+  <code>raise</code> 규약은 <b>내가 width/height를 정의할 때 말을 헷갈리게 해서 생긴 의도치 않은 제약</b>이다.
+  실제로는 필요 없는 규약이며 <b>0.3.8.0부터 제거·적용</b>한다.</p>
+</div></header>
+
+<main class="wrap">
+
+<section>
+  <h2><span class="n">1.</span> 증상 — 형상 생성이 막힘 <span class="pill bad">ValueError</span></h2>
+  <p class="sub">현재 <code>0.3.x_fixed.toml</code> 값으로 STEP/AEDT를 생성하면 scene 계약 검증에서 예외가 난다.</p>
+  <div class="eq">ValueError: TX SSW long dimension must follow Y axis
+            (size_x=180.11192, size_y=162.3146)</div>
+  <div class="card"><b>위치</b>
+    <ul>
+      <li><code>src/peetsfea/ssw_step.py</code> · <code>_validate_scene_contract()</code></li>
+      <li>TX: <code>if tx_bounds.size_y &lt;= tx_bounds.size_x: raise ValueError(...)</code></li>
+      <li>RX: <code>if rx_bounds.size_y &lt;= rx_bounds.size_z: raise ValueError(...)</code></li>
+    </ul>
+  </div>
+  <div class="note">즉 "TX는 Y가 X보다, RX는 Y가 Z보다 <b>반드시 더 길어야 한다</b>"를 강제한다.
+  현재 설계는 TX의 X(180.11mm)가 Y(162.31mm)보다 길어서 이 규약을 위반 → 생성 중단.</div>
+</section>
+
+<section>
+  <h2><span class="n">2.</span> 원인 — 내 width/height 정의가 헷갈리게 만든 규약</h2>
+  <p class="sub">이 규약은 물리적으로 요구되는 게 아니라, <b>내가 "width/height"를 설명할 때 축 방향을 헷갈리게 말해서</b> 그 의미를 코드 계약으로 굳혀버린 결과다.</p>
+  <div class="grid2">
+    <div class="card"><b>무엇이 잘못됐나</b>
+      <ul>
+        <li>당시 width/height의 축 대응을 모호하게 정의 → "긴 쪽이 Y를 따라야 한다"는 <b>방향 가정</b>이 끼어듦.</li>
+        <li>그 가정이 <b>형상 검증의 hard <code>raise</code></b>로 들어가, 설계 자유도를 부당하게 제약.</li>
+        <li>결과: width/height 비율을 자유롭게 바꾸면 (긴 변이 X로 가는 순간) 합법적인 코일인데도 생성이 막힘.</li>
+      </ul>
+    </div>
+    <div class="card"><b>왜 필요 없나</b>
+      <ul>
+        <li>SSW 코일의 긴 변이 X냐 Y냐는 <b>해석 정확성·물리와 무관</b>(좌표축은 임의 라벨).</li>
+        <li>포트/페라이트/메시는 모두 코일에 <b>상대적으로</b> 정의되므로 절대 축 방향에 의존하지 않는다.</li>
+        <li>thin-Z(TX)·thin-X(RX) 같은 "평면성" 검증은 의미 있지만, "어느 변이 더 길어야 한다"는 <b>불필요</b>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3.</span> 설계 원칙 위반 — 이건 <code>raise</code>가 아니라 toml constraints였어야</h2>
+  <p class="sub">설령 이런 제약이 정말 필요했더라도, 형상 빌더 한복판에서 <code>raise ValueError</code>로 막는 건 잘못된 자리다.</p>
+  <div class="card" style="border-color:rgba(255,120,120,.4)">
+    <ul>
+      <li><b>진짜 제약이라면 데이터(설계공간)에 선언했어야 한다</b> — <code>toml</code>의 <code>constraints</code>로.
+        그래야 샘플러가 <b>생성 단계에서 위반 조합을 애초에 안 뽑고</b>, 설계공간 문서에도 드러난다.</li>
+      <li><code>raise</code>는 <b>이미 만들어진 형상을 사후에 거부</b>할 뿐 — 낭비(생성→폐기)이고, 설계공간엔 보이지 않는 <b>숨은 규약</b>이 된다.</li>
+      <li>즉 "constraints로 선언 안 하고 raise로 막았다" = <b>이 규약이 원래 의도된 설계 제약이 아니었다는 방증</b>.</li>
+    </ul>
+  </div>
+  <div class="note"><b>정리:</b> 필요한 제약 → <code>toml constraints</code>(선언적, 샘플링 단계). 불변식 검증 → 평면성 같은 <b>물리적으로 의미 있는 것만</b>.
+  "긴 변 = Y"는 둘 다 아니므로 그냥 제거한다.</div>
+</section>
+
+<section style="border-bottom:none">
+  <h2><span class="n">4.</span> 조치 <span class="pill done">0.3.8.0</span></h2>
+  <table>
+    <tr><th>버전</th><th>상태</th><th>내용</th></tr>
+    <tr><td><b>0.3.7.1</b></td><td><span class="pill todo">과거 임시</span></td>
+        <td>STEP/AEDT를 보기 위해 TX·RX "긴 변 = Y" 두 <code>raise</code>를 임시 비활성화(주석+<code>pass</code>).</td></tr>
+    <tr><td><b>0.3.8.0</b></td><td><span class="pill done">제거·적용</span></td>
+        <td>두 "긴 변 = Y축" 규약을 <b>코드에서 완전히 삭제</b>. 평면성(thin-Z/thin-X) 검증은 유지.
+        만약 향후 실제 방향 제약이 필요해지면 <b><code>raise</code>가 아니라 toml constraints로</b> 선언.</td></tr>
+  </table>
+  <div class="note"><b>요지:</b> 이 규약은 내 용어 혼동에서 비롯된 원치 않은 제약이고, 필요도 없으며, 자리(코드 raise)도 틀렸다 → <b>0.3.8.0에서 제거</b>한다.</div>
+</section>
+
+</main>
+<footer><div class="wrap">peetsfea · SSW "긴 변 = Y축" 규약 제거 노트 · 0.3.8.0 삭제 적용</div></footer>
+</body>
+</html>

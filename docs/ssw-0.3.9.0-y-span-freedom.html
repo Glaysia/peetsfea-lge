@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SSW Y 길이 자유도 3배 확대 (0.3.9.0)</title>
+<style>
+  :root{--bg:#0b1020;--panel:#161f3d;--soft:#121a33;--bd:#26315c;--tx:#e6ebff;--mut:#9aa6c9;
+        --ac:#5b8cff;--ac2:#34d4b7;--warn:#ffb454;--ok:#34d4b7;--todo:#ffb454;--code:#0d1428;--bad:#ff7878;}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 560px at 82% -8%,#1a2342 0,transparent 60%),var(--bg);
+       color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.65}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+  header{padding:64px 0 28px;border-bottom:1px solid var(--bd)}
+  .badge{display:inline-flex;gap:8px;align-items:center;padding:5px 12px;border:1px solid var(--bd);
+         background:var(--soft);border-radius:999px;font-size:12.5px;color:var(--mut)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+  h1{font-size:clamp(26px,4.4vw,40px);line-height:1.15;margin:18px 0 8px;letter-spacing:-.02em}
+  h1 .g{background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:var(--mut);max-width:800px;font-size:16px}
+  section{padding:34px 0;border-bottom:1px solid var(--bd)}
+  h2{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+  h2 .n{color:var(--ac2);font-variant-numeric:tabular-nums}
+  .sub{color:var(--mut);margin:0 0 18px;font-size:14.5px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  th,td{padding:9px 12px;border:1px solid var(--bd);text-align:left;vertical-align:top}
+  th{background:var(--soft);color:var(--mut);font-weight:600}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:.92em;background:var(--code);
+       padding:1px 6px;border-radius:6px;color:#cdd9ff}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700}
+  .done{background:rgba(52,212,183,.15);color:var(--ok);border:1px solid rgba(52,212,183,.35)}
+  .todo{background:rgba(255,180,84,.13);color:var(--todo);border:1px solid rgba(255,180,84,.35)}
+  .bad{background:rgba(255,120,120,.13);color:var(--bad);border:1px solid rgba(255,120,120,.4)}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:18px;margin:10px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .note{margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(255,180,84,.08);
+        border:1px solid rgba(255,180,84,.3);color:#ffd9a3;font-size:13.5px}
+  ul{margin:6px 0 0;padding-left:20px;color:var(--mut)}
+  ul li{margin:3px 0}
+  .eq{background:var(--code);border:1px solid var(--bd);border-radius:10px;padding:12px 16px;color:#cdd9ff;
+      font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:13px;overflow-x:auto;white-space:pre}
+  footer{padding:28px 0 56px;color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <span class="badge"><span class="dot"></span> peetsfea · 설계 노트 · SSW design space</span>
+  <h1>SSW <span class="g">Y 길이 자유도</span> 3배 확대 — 0.3.9.0</h1>
+  <p class="lede">TX/RX SSW 코일의 <b>글로벌 Y축 길이 상한</b>을 3배로 키워, 길쭉한(elongated) 형상까지
+  설계공간에 넣었다. Y 길이는 <code>width_max_mm × width_ratio</code>로 정의되므로 상한(<code>width_max_mm</code>)을
+  3배로 올리면 같은 ratio에서 형상이 3배 길어진다. 설계공간이 바뀌었으므로 <b>spec_version을 0.3.9.0</b>으로 올린다.</p>
+</div></header>
+
+<main class="wrap">
+
+<section>
+  <h2><span class="n">1.</span> 무엇을 바꿨나 <span class="pill done">0.3.9.0</span></h2>
+  <p class="sub">Y축을 지배하는 <code>width_max_mm</code>를 360 → 1080 (3×)으로 올리고, 코일이 들어갈 배치 한계 박스(<code>*_region_max</code>)의 Y 크기도 같이 3배로 키웠다.</p>
+  <table>
+    <tr><th>항목</th><th class="num">이전</th><th class="num">0.3.9.0</th><th>의미</th></tr>
+    <tr><td><code>fixed_dimensions.width_max_mm</code></td><td class="num">360.0</td><td class="num">1080.0</td><td>Y 길이 상한 (× width_ratio)</td></tr>
+    <tr><td><code>tx_region_max.size_xyz[1]</code> (Y)</td><td class="num">480.14</td><td class="num">1440.42</td><td>TX 배치 한계 Y</td></tr>
+    <tr><td><code>rx_region_max.size_xyz[1]</code> (Y)</td><td class="num">480.14</td><td class="num">1440.42</td><td>RX 배치 한계 Y</td></tr>
+    <tr><td>두 region_max <code>origin_xyz[1]</code></td><td class="num">-240.07</td><td class="num">-720.21</td><td>중심 유지 (재중심)</td></tr>
+  </table>
+  <div class="note"><b>두 TOML 모두 적용:</b> <code>0.3.x_sweep.toml</code>(설계공간 SSOT) + <code>0.3.x_fixed.toml</code>(고정점 예제).
+  <code>height_max_mm</code>(=TX의 X / RX의 Z)는 그대로 둔다 — 이번 변경은 <b>Y축 한정</b>.</div>
+</section>
+
+<section>
+  <h2><span class="n">2.</span> 왜 Y = <code>width_max_mm</code> 인가</h2>
+  <p class="sub">경험적으로 body bounding box를 찍어보면, TX·RX 두 형상 모두 <b>글로벌 Y축 길이 ≈ width_mm = width_max_mm × width_ratio</b> 였다.</p>
+  <div class="grid2">
+    <div class="card"><b>축 대응 (배치 후)</b>
+      <ul>
+        <li><b>TX</b> (XY 평면, thin-Z): Y ← <code>width</code>, X ← <code>height</code></li>
+        <li><b>RX</b> (YZ 평면, thin-X): Y ← <code>width</code>, Z ← <code>height</code></li>
+        <li>즉 두 코일 모두 <b>Y = width 계열</b> → 공유 필드 <code>width_max_mm</code> 하나로 둘 다 늘어남.</li>
+      </ul>
+    </div>
+    <div class="card"><b>3배 검증 (fixed 예제)</b>
+      <ul>
+        <li>TX copper Y: 166.5 → <b>497.2</b> mm (≈3×)</li>
+        <li>RX copper Y: 356.4 → <b>1068.8</b> mm (≈3×)</li>
+        <li>ratio 고정 시 상한 3배 → 형상 3배. 선형 관계 확인.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3.</span> region_max도 같이 키워야 했던 이유 <span class="pill bad">ValueError</span></h2>
+  <p class="sub"><code>width_max</code>만 올리면 코일은 길어지지만, 배치 한계 박스가 그대로라 placement 검증에서 막힌다.</p>
+  <div class="eq">ValueError: RX SSW Y span does not fit inside rx_region_max
+            (span=1068.83564, rx_region_max_y_size=480.14)</div>
+  <div class="card">
+    <ul>
+      <li><code>*_region_max</code>는 코일이 들어갈 수 있는 <b>최대 박스</b>(non-model object)다. 이게 곧 "max"의 실체.</li>
+      <li>상위 박스 <code>tv</code>/<code>tx_region</code>은 Y=1842라 1440.42를 이미 충분히 담으므로 그대로 둔다.</li>
+      <li>헤드룸: 코일 Y 최대 ≈ 1080(+trace) &lt; region_max Y 1440.42 → 여유 확보.</li>
+    </ul>
+  </div>
+</section>
+
+<section style="border-bottom:none">
+  <h2><span class="n">4.</span> 버전 정책 — 이번엔 spec까지 올림</h2>
+  <p class="sub">0.3.8.1~0.3.8.3은 솔버 설정(패스·메시)만 바꾼 패키지 패치라 <b>spec_version은 0.3.8.0 고정</b>이었다. 0.3.9.0은 <b>설계공간(geometry SSOT)이 바뀌었으므로</b> spec까지 올린다.</p>
+  <table>
+    <tr><th>대상</th><th>값</th></tr>
+    <tr><td><code>pyproject.toml</code> version</td><td>0.3.8.3 → <b>0.3.9.0</b></td></tr>
+    <tr><td><code>version.py</code> SUPPORTED_SPEC_VERSION</td><td>0.3.8.0 → <b>0.3.9.0</b></td></tr>
+    <tr><td><code>ssw_step.py</code> / <code>ssw_design_space.py</code> SPEC_VERSION</td><td>0.3.8.0 → <b>0.3.9.0</b></td></tr>
+    <tr><td>두 TOML <code>spec_version</code></td><td>0.3.8.0 → <b>0.3.9.0</b></td></tr>
+  </table>
+  <div class="note"><b>자유변수 차원은 18로 동일</b> — 새 변수를 추가한 게 아니라 기존 <code>width_max_mm</code> 한 축의 상한만 넓혔다.
+  <span class="pill todo">후속</span> fixed.toml 값 드리프트 + Y 3배로 깨진 테스트 fixture/단언은 다음 커밋에서 하드코딩으로 맞춘다.</div>
+</section>
+
+</main>
+<footer><div class="wrap">peetsfea · SSW Y 길이 자유도 3배 확대 노트 · 0.3.9.0</div></footer>
+</body>
+</html>

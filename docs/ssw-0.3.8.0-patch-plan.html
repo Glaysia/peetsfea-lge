@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>peetsfea 0.3.8.x Patch Plan - Ferrite Range and Full-Solve Hardening</title>
+<style>
+  :root{
+    --bg:#f6f7fb;--ink:#17202f;--mut:#5b6474;--line:#d7dce6;--panel:#ffffff;
+    --blue:#1e5fbf;--green:#0c7c59;--red:#b42318;--amber:#9a5b00;--code:#eef2f7;
+    --band:#e8f0ff;--soft:#f0f4f9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+       line-height:1.58}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:42px 0 28px}
+  .eyebrow{display:inline-block;font-size:12px;font-weight:700;color:var(--blue);
+           text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+  h1{font-size:34px;line-height:1.16;margin:0 0 10px}
+  .lede{max-width:900px;color:var(--mut);font-size:16px;margin:0}
+  nav{background:#101828;color:#e8edf7;border-bottom:1px solid #0b1220}
+  nav .wrap{display:flex;gap:18px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}
+  nav a{color:#e8edf7;text-decoration:none;font-size:13px}
+  main{padding:28px 0 54px}
+  section{margin:0 0 22px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:22px}
+  h2{font-size:21px;margin:0 0 8px}
+  h3{font-size:16px;margin:22px 0 8px}
+  p{margin:8px 0;color:var(--mut)}
+  code{background:var(--code);border:1px solid #dce3ee;border-radius:4px;padding:1px 5px;
+       font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:.92em;color:#152033}
+  table{width:100%;border-collapse:collapse;margin:12px 0 4px;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--soft);color:#30394a;font-weight:700}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  ul{margin:8px 0 0;padding-left:20px;color:var(--mut)}
+  li{margin:4px 0}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+  .box{border:1px solid var(--line);border-radius:8px;padding:14px;background:#fff}
+  .box b{display:block;margin-bottom:4px}
+  .pill{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700}
+  .done{background:#e7f6ef;color:var(--green);border:1px solid #bde7d2}
+  .todo{background:#fff4df;color:var(--amber);border:1px solid #ffd993}
+  .break{background:#fdecec;color:var(--red);border:1px solid #fac5c0}
+  .note{border-left:4px solid var(--blue);background:var(--band);padding:10px 12px;margin:12px 0;color:#223657}
+  .warn{border-left-color:var(--amber);background:#fff7e8;color:#4d3300}
+  .ok{border-left-color:var(--green);background:#ebf8f2;color:#123f30}
+  .mono{font-family:"SFMono-Regular",Consolas,Menlo,monospace}
+  @media(max-width:860px){.grid{grid-template-columns:1fr} h1{font-size:27px} section{padding:16px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <span class="eyebrow">peetsfea patch plan</span>
+    <h1>0.3.8.x ferrite range and full-solve hardening</h1>
+    <p class="lede">
+      이 문서는 0.3.8.x에서 판단할 두 변경, 즉 TX MULL ferrite sheet count 5장 확장과
+      4-core full solve 해석 설정 강화를 한 곳에 고정한다. <code>semi_dry</code> 경로는 제거하고,
+      baseline 대비 solve 시간이 얼마나 증가하는지는 후속 작업에서 실제 headless HFSS 실행으로 측정해 기록한다.
+    </p>
+  </div>
+</header>
+<nav>
+  <div class="wrap">
+    <a href="#summary">요약</a>
+    <a href="#scope">패치 범위</a>
+    <a href="#inputs">입력 파라미터</a>
+    <a href="#outputs">출력 파라미터</a>
+    <a href="#analysis">해석 설정</a>
+    <a href="#tasks">작업 순서</a>
+    <a href="#acceptance">완료 기준</a>
+  </div>
+</nav>
+<main class="wrap">
+
+<section id="summary">
+  <h2>1. 요약</h2>
+  <div class="grid">
+    <div class="box">
+      <b>변경 1</b>
+      <span class="pill done">ferrite range</span>
+      <p><code>ferrite.tx_mull_sheet_count</code>를 기존 <code>1..3</code>에서 <code>1..5</code>로
+      확장한다. 자유변수 개수는 그대로 18개다.</p>
+    </div>
+    <div class="box">
+      <b>변경 2</b>
+      <span class="pill break">full solve only</span>
+      <p><code>semi_dry</code> 경로를 제거하고 full solve 설정을 <code>MaxDeltaS=0.003</code>,
+      pass <code>16/13/9</code>, <code>PercentRefinement=30</code>으로 강화한다.</p>
+    </div>
+    <div class="box">
+      <b>판단 자료</b>
+      <span class="pill todo">timing follow-up</span>
+      <p>직전 baseline commit <code>eb7f18a</code>와 변경 worktree를 같은 fixed TOML, 같은 seed,
+      같은 4-core CPU 설정으로 돌리는 시간 비교는 후속 작업으로 남긴다.</p>
+    </div>
+  </div>
+  <div class="note">
+    0.3.8.x의 기본 형상 자유 입력은 18개다. RX 모드와 RX normal-coil quarter-turn 변수 3개는
+    고정되어 입력 벡터에서 빠진다.
+  </div>
+  <div class="note warn">
+    <b>측정 원칙:</b> 두 실행은 모두 <code>cores=4</code>, <code>gpus=0</code>으로 고정한다.
+    가능하면 동시에 실행하고, 결과에는 <code>solve_outcome.analyze_elapsed_ms</code>와
+    <code>solve_telemetry.elapsed_ms</code>를 모두 남긴다.
+  </div>
+</section>
+
+<section id="scope">
+  <h2>2. 패치 범위</h2>
+  <table>
+    <tr><th>영역</th><th>0.3.8.0에서 할 일</th><th>비고</th></tr>
+    <tr>
+      <td>Version/spec</td>
+      <td><code>pyproject.toml</code>, <code>version.py</code>, <code>ssw_design_space.py</code>,
+        <code>ssw_step.py</code>, package data TOML의 버전 표기를 0.3.8.0으로 맞춘다.</td>
+      <td>runner 문서의 <code>peetsfea.__version__</code> 계약도 같이 갱신한다.</td>
+    </tr>
+    <tr>
+      <td>Geometry validation</td>
+      <td>TX/RX SSW의 long-dimension Y-axis 검증 블록을 삭제한다. thin-plane 검증은 유지한다.</td>
+      <td>TX는 XY-plane thin Z, RX는 YZ-plane thin X 조건만 불변식으로 남긴다.</td>
+    </tr>
+    <tr>
+      <td>Design space</td>
+      <td>RX SSW mode와 RX no-SSW quarter-turn 변수를 <code>count=1</code>로 고정한다.</td>
+      <td>고정값: <code>is_ssw_enabled=1</code>, <code>no_ssw_qturn_start_int=0</code>,
+        <code>no_ssw_qturn_n_int=0</code>.</td>
+    </tr>
+    <tr>
+      <td>TX ferrite range</td>
+      <td><code>ferrite.tx_mull_sheet_count</code>의 reference sweep을 <code>[true, 1, 5, 5]</code>로 확장한다.</td>
+      <td>입력 차원은 18개 그대로다. 샘플러 후보 수만 1/2/3장에서 1/2/3/4/5장으로 넓어진다.</td>
+    </tr>
+    <tr>
+      <td>Full solve settings</td>
+      <td><code>MaxDeltaS=0.003</code>, pass <code>16/13/9</code>, <code>PercentRefinement=30</code>을 적용한다.</td>
+      <td>AEDT payload의 <code>MaxPass</code>/<code>MinPass</code>/<code>MinConvPass</code> alias도 같은 pass 값으로 맞춘다.</td>
+    </tr>
+    <tr>
+      <td>Runner mode</td>
+      <td><code>semi_dry</code> mode를 제거하고 <code>full</code>만 허용한다.</td>
+      <td>빠른 테스트용 pass override는 backend 함수 단위 테스트로만 남기고 runner-facing 경로에서는 쓰지 않는다.</td>
+    </tr>
+    <tr>
+      <td>Solve time report</td>
+      <td>baseline과 변경 버전을 같은 fixed point로 headless HFSS solve한다.</td>
+      <td>이번 커밋 이후 후속 작업으로 실행하고 이 HTML에 시간 차이를 기록한다.</td>
+    </tr>
+    <tr>
+      <td>Tests/docs</td>
+      <td>dimension count, fixed 값, ferrite sheet count, token/ledger 기대값, RX normal-mode 테스트를 새 계약으로 갱신한다.</td>
+      <td>RX normal/spiral 선택 테스트는 0.3.8.x에서는 제거하거나 거부 테스트로 바꾼다.</td>
+    </tr>
+  </table>
+</section>
+
+<section id="inputs">
+  <h2>3. 입력 파라미터 계약</h2>
+  <p>
+    입력 파라미터는 <code>src/peetsfea/data/0.3.x_sweep.toml</code>의 <code>count != 1</code> range가
+    canonical owner다. 0.3.8.x에서는 아래 표의 "keep" 항목만 설계 자유변수로 남긴다.
+  </p>
+
+  <h3>3.1 자유 입력 요약</h3>
+  <table>
+    <tr><th>분류</th><th class="num">이전 자유개수</th><th class="num">0.3.8.x 목표</th><th>변경 내용</th></tr>
+    <tr><td>Shared layout/ferrite</td><td class="num">4</td><td class="num">4</td><td>TX/RX 거리, TX ferrite 위치/장수, RX ferrite 위치</td></tr>
+    <tr><td>TX SSW geometry</td><td class="num">7</td><td class="num">7</td><td>TX는 계속 SSW 고정, SSW 형상 변수 유지</td></tr>
+    <tr><td>RX SSW geometry</td><td class="num">10</td><td class="num">7</td><td>RX mode와 RX no-SSW 변수 3개 고정</td></tr>
+    <tr><th>합계</th><th class="num">21</th><th class="num">18</th><th>기본 0.3.8.x shape vector는 18차원</th></tr>
+  </table>
+
+  <h3>3.2 0.3.8.x shape vector</h3>
+  <table>
+    <tr><th>Path</th><th>Type</th><th>current range</th><th>0.3.8.x action</th></tr>
+    <tr><td><code>fixed_dimensions.tx_rx_min_distance_mm</code></td><td>float</td><td>50.0..200.0, count 100</td><td>keep</td></tr>
+    <tr><td><code>ferrite.tx_mull_position_ratio</code></td><td>float</td><td>0.0..0.9, count 24</td><td>keep</td></tr>
+    <tr><td><code>ferrite.tx_mull_sheet_count</code></td><td>int</td><td>1..5, count 5</td><td>keep; same one free owner path</td></tr>
+    <tr><td><code>ferrite.rx_mull_position_ratio</code></td><td>float</td><td>0.0..1.0, count 11</td><td>keep, but audit whether RX ferrite remains disabled</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].width_ratio</code></td><td>float</td><td>0.0555556..1.0, count 500</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].height_ratio</code></td><td>float</td><td>0.0555556..1.0, count 500</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].turn_n_int</code></td><td>int</td><td>2..10, count 10</td><td>keep, coprime with twist</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].gap_ratio</code></td><td>float</td><td>0.1..0.9, count 50</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].void_area_ratio</code></td><td>float</td><td>0.1..0.9, count 50</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].pcb_gap_mm</code></td><td>float</td><td>1.0..10.0, count 50</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].twist_factor</code></td><td>int</td><td>1..10, count 10</td><td>keep, coprime with turn</td></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].width_ratio</code></td><td>float</td><td>0.0555556..1.0, count 500</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].height_ratio</code></td><td>float</td><td>0.0555556..1.0, count 500</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].turn_n_int</code></td><td>int</td><td>1..10, count 10</td><td>keep, then enforce <code>&gt; 1</code> while RX SSW is fixed true</td></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].gap_ratio</code></td><td>float</td><td>0.1..0.9, count 50</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].void_area_ratio</code></td><td>float</td><td>0.1..0.9, count 50</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].pcb_gap_mm</code></td><td>float</td><td>1.0..4.5, count 25</td><td>keep</td></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].twist_factor</code></td><td>int</td><td>1..10, count 10</td><td>keep, coprime with turn</td></tr>
+  </table>
+
+  <h3>3.3 Fixed or removed from model input</h3>
+  <table>
+    <tr><th>Path</th><th>0.3.8.x fixed value</th><th>Reason</th></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].is_ssw_enabled</code></td><td><code>1</code></td><td>RX is always SSW from 0.3.8.x.</td></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].no_ssw_qturn_start_int</code></td><td><code>0</code></td><td>RX normal spiral mode is removed from the design space.</td></tr>
+    <tr><td><code>modeled_objects[role=rx_ssw_coil].no_ssw_qturn_n_int</code></td><td><code>0</code></td><td>RX normal spiral mode is removed from the design space.</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].is_ssw_enabled</code></td><td><code>1</code></td><td>TX SSW product path stays fixed enabled.</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].no_ssw_qturn_start_int</code></td><td><code>0</code></td><td>TX normal spiral mode is disabled for the SSW product path.</td></tr>
+    <tr><td><code>modeled_objects[role=tx_ssw_coil].no_ssw_qturn_n_int</code></td><td><code>0</code></td><td>TX normal spiral mode is disabled for the SSW product path.</td></tr>
+    <tr><td><code>modeled_objects[role=tx_under_coil].*</code></td><td>current fixed values</td><td>Under-coil remains disabled in the current reference surface unless a later patch reopens it.</td></tr>
+  </table>
+</section>
+
+<section id="outputs">
+  <h2>4. 출력 파라미터 계약</h2>
+  <p>
+    0.3.8.0은 raw AEDT report를 줄이지 않는다. runner 반환 구조와 CSV report는 유지하고, 모델 학습용 축약
+    feature/target은 별도 후처리 계층에서 만든다.
+  </p>
+
+  <h3>4.1 Public API result keys</h3>
+  <table>
+    <tr><th>Key</th><th>Meaning</th></tr>
+    <tr><td><code>mode</code>, <code>seed</code></td><td><code>mode</code> is full-only; seed remains the deterministic sampling seed</td></tr>
+    <tr><td><code>dimension_count</code>, <code>free_owner_paths</code>, <code>point_values</code></td><td>input shape vector metadata and concrete values</td></tr>
+    <tr><td><code>design_id</code>, <code>point_hash</code></td><td>deterministic identity from the sampled point</td></tr>
+    <tr><td><code>output_dir</code>, <code>sampled_toml_path</code>, <code>sample_point_ledger_path</code>, <code>aedt_path</code></td><td>artifact locations</td></tr>
+    <tr><td><code>setup_pass_counts</code></td><td><code>maximum_passes</code>, <code>minimum_passes</code>, <code>minimum_converged_passes</code></td></tr>
+    <tr><td><code>solve_telemetry</code>, <code>solve_outcome</code></td><td>solve resource/timing/status data</td></tr>
+    <tr><td><code>csv_paths</code>, <code>csv_text_by_report</code></td><td>report CSV locations and inline text keyed by report name</td></tr>
+  </table>
+
+  <h3>4.2 AEDT report CSVs</h3>
+  <table>
+    <tr><th>Report</th><th>Primary sweep</th><th>Columns / traces</th><th>Use</th></tr>
+    <tr>
+      <td><code>Results1_Pass</code></td>
+      <td><code>Pass</code></td>
+      <td>16 terminal output variables, <code>SolvedElements</code>, <code>MaxMagDeltaS</code></td>
+      <td>adaptive-pass convergence and post-solve quality features</td>
+    </tr>
+    <tr>
+      <td><code>Results2_Last</code></td>
+      <td><code>Freq</code></td>
+      <td><code>loss_W_*</code> for material-assigned solids plus radiation region</td>
+      <td>loss decomposition and loss-ratio target derivation</td>
+    </tr>
+    <tr>
+      <td><code>Results3_Freq</code></td>
+      <td><code>Freq</code></td>
+      <td>16 terminal output variables plus <code>Volume(...)</code> diagnostics</td>
+      <td>frequency-response rows and geometry sanity diagnostics</td>
+    </tr>
+  </table>
+
+  <h3>4.3 Terminal output variables</h3>
+  <table>
+    <tr><th>Variable</th><th>Meaning</th></tr>
+    <tr><td><code>Ltx_uH</code>, <code>Lrx_uH</code></td><td>self inductance from imaginary terminal impedance</td></tr>
+    <tr><td><code>M_uH</code>, <code>k_ratio</code></td><td>mutual inductance and coupling ratio</td></tr>
+    <tr><td><code>Qtx_ratio</code>, <code>Qrx_ratio</code>, <code>FOM_ratio</code>, <code>eta_fom_max_ratio</code></td><td>quality/FOM/idealized efficiency metrics</td></tr>
+    <tr><td><code>re_Z11_ohm</code>, <code>im_Z11_ohm</code></td><td>TX self impedance components</td></tr>
+    <tr><td><code>re_Z22_ohm</code>, <code>im_Z22_ohm</code></td><td>RX self impedance components</td></tr>
+    <tr><td><code>re_Z12_ohm</code>, <code>im_Z12_ohm</code></td><td>transfer impedance components</td></tr>
+    <tr><td><code>M_over_Ltx_ratio</code>, <code>M_over_Lrx_ratio</code></td><td>normalized mutual-inductance ratios</td></tr>
+  </table>
+
+  <h3>4.4 Model-ready compact target plan</h3>
+  <table>
+    <tr><th>Target group</th><th class="num">Width</th><th>Columns</th><th>Note</th></tr>
+    <tr><td>Z matrix core</td><td class="num">6</td><td><code>re/im Z11</code>, <code>re/im Z22</code>, <code>re/im Z12</code></td><td>Use signed/log transform only in the dataset layer, not in AEDT reports.</td></tr>
+    <tr><td>Loss ratio</td><td class="num">1</td><td><code>loss_ratio_*</code></td><td>Derive explicitly from <code>Results2_Last</code>; numerator/denominator must be named.</td></tr>
+    <tr><td>Convergence quality</td><td class="num">1</td><td><code>MaxMagDeltaS</code></td><td>From <code>Results1_Pass</code>; attach to the selected pass row.</td></tr>
+    <tr><th>Total compact target</th><th class="num">8</th><th colspan="2">This is a derived training target, not a replacement for raw CSV reports.</th></tr>
+  </table>
+  <div class="note warn">
+    <b>Row model decision:</b> pre-solve prediction should use only shape inputs plus requested frequency. Post-solve/report-level
+    models may add <code>Pass</code>, <code>SolvedElements</code>, and <code>MaxMagDeltaS</code> depending on the target.
+  </div>
+</section>
+
+<section id="analysis">
+  <h2>5. 해석 설정 강화 및 후속 시간 비교</h2>
+  <p>
+    이 섹션은 PyAEDT SSW 경로의 HFSS setup/mesh/pass 설정 변경과 baseline 대비 solve 시간 증가량을
+    판단용으로 정리한다. 시간 비교는 이번 규약 커밋 이후 후속 작업으로 실행한다.
+    값의 소스는 <code>src/peetsfea/backend/pyaedt/ssw_ports.py</code>다.
+  </p>
+
+  <h3>5.1 Mesh assignment</h3>
+  <table>
+    <tr><th>항목</th><th>현재값</th><th>의미 / 강화 판단 포인트</th></tr>
+    <tr><td>Module / operation</td><td><code>MeshSetup</code> / <code>AssignLengthOp</code> / <code>Length1</code></td><td>명시 length mesh operation 1개를 기록된 대상에 적용한다.</td></tr>
+    <tr><td>Mesh 대상</td><td><code>RX copper</code>, <code>TX copper</code>, all FR4 PCB bodies</td><td>현재는 TX/RX 주요 copper와 FR4에만 length 제한을 건다. ferrite, air region, port sheet는 직접 mesh target이 아니다.</td></tr>
+    <tr><td>RX copper 후보</td><td><code>rx_ssw_coil_coil_copper</code> 또는 <code>rx_ssw_coil_ssw_copper</code></td><td>실제 ledger에서 정확히 1개가 잡혀야 한다. 0개/2개면 fail-fast.</td></tr>
+    <tr><td>TX copper 대상</td><td><code>tx_ssw_coil_ssw_copper</code></td><td>실제 ledger에서 정확히 1개가 잡혀야 한다.</td></tr>
+    <tr><td>FR4 대상</td><td>recorded <code>fr4_body_names</code> 전체</td><td>최소 1개가 필요하다.</td></tr>
+    <tr><td><code>RefineInside</code></td><td><code>false</code></td><td>현재 length operation은 내부 refine을 켜지 않는다.</td></tr>
+    <tr><td><code>RestrictLength</code> / <code>MaxLength</code></td><td><code>true</code> / <code>1mm</code></td><td>가장 직접적인 mesh 강화 축이다. 예: 0.75 mm, 0.5 mm로 낮추면 edge/skin 근방 해상도는 올라가고 solve time은 증가한다.</td></tr>
+    <tr><td><code>RestrictElem</code> / <code>NumMaxElem</code></td><td><code>true</code> / <code>50000</code></td><td>mesh 증가 상한이다. length를 줄일 때 같이 올릴지 판단해야 한다.</td></tr>
+  </table>
+
+  <h3>5.2 Adaptive setup and pass percentage</h3>
+  <table>
+    <tr><th>항목</th><th>baseline <code>eb7f18a</code></th><th>변경값</th><th>판단 포인트</th></tr>
+    <tr><td>Setup</td><td><code>Setup1</code>, <code>HfssDriven</code></td><td>same</td><td>단일 driven setup.</td></tr>
+    <tr><td>Frequency</td><td><code>6.78MHz</code></td><td>same</td><td>adaptive mesh 기준 주파수.</td></tr>
+    <tr><td><code>MaxDeltaS</code></td><td><code>0.005</code></td><td><code>0.003</code></td><td>수렴 기준을 더 엄격하게 한다.</td></tr>
+    <tr><td><code>MaximumPasses</code></td><td><code>11</code></td><td><code>16</code></td><td>full solve pass 상한을 5 pass 늘린다.</td></tr>
+    <tr><td><code>MinimumPasses</code></td><td><code>8</code></td><td><code>13</code></td><td>최소 adaptive pass를 5 pass 늘린다.</td></tr>
+    <tr><td><code>MinimumConvergedPasses</code></td><td><code>9</code></td><td><code>9</code></td><td>수렴 pass 요구량은 유지한다.</td></tr>
+    <tr><td><code>PercentRefinement</code></td><td><code>23</code></td><td><code>30</code></td><td>pass마다 mesh refine 비율을 올린다.</td></tr>
+    <tr><td><code>MaxPass</code>/<code>MinPass</code>/<code>MinConvPass</code></td><td><code>10/1/1</code></td><td><code>16/13/9</code></td><td>payload alias가 main pass 설정과 엇갈리지 않게 맞춘다.</td></tr>
+    <tr><td><code>BasisOrder</code></td><td><code>0</code></td><td>same</td><td>이번 변경에서는 건드리지 않는다.</td></tr>
+    <tr><td><code>PortAccuracy</code></td><td><code>2</code></td><td>same</td><td>이번 변경에서는 건드리지 않는다.</td></tr>
+    <tr><td>Solver</td><td><code>Direct Solver</code></td><td>same</td><td>4-core CPU 경로로 비교한다.</td></tr>
+  </table>
+
+  <h3>5.3 Sweep and solve guardrails</h3>
+  <table>
+    <tr><th>항목</th><th>현재값</th><th>의미 / 강화 판단 포인트</th></tr>
+    <tr><td>Sweep</td><td><code>0.1MHz</code> to <code>100MHz</code>, <code>LinearCount</code>, <code>81</code> points</td><td>주파수 응답 report의 기본 해상도. 결과 곡선이 거칠면 count 증가를 검토한다.</td></tr>
+    <tr><td>Sweep type</td><td><code>Interpolating</code></td><td>보간 sweep. <code>InterpTolerance=0.5</code>, <code>InterpMaxSolns=250</code>, passivity enforced.</td></tr>
+    <tr><td>Hard abort</td><td><code>3600s</code> hard abort, <code>120s</code> abort grace</td><td>mesh/pass 강화 시 시간 제한에 먼저 걸릴 수 있다.</td></tr>
+    <tr><td>Solve cores</td><td><code>4</code></td><td>현재 analyze 실행 기본 core 수.</td></tr>
+    <tr><td>Pass report</td><td><code>Results1_Pass</code>: <code>Pass</code>, <code>SolvedElements</code>, <code>MaxMagDeltaS</code></td><td>강화 전후 수렴 품질과 mesh 증가를 비교할 기준 report.</td></tr>
+  </table>
+
+  <h3>5.4 Follow-up solve-time comparison</h3>
+  <table>
+    <tr><th>Run</th><th>Code state</th><th>Settings</th><th class="num">Analyze elapsed</th><th class="num">Telemetry elapsed</th><th>Outcome</th></tr>
+    <tr>
+      <td>baseline</td>
+      <td><code>eb7f18a</code></td>
+      <td><code>MaxDeltaS=0.005</code>, pass <code>11/8/9</code>, <code>PercentRefinement=23</code></td>
+      <td class="num">deferred</td>
+      <td class="num">deferred</td>
+      <td>deferred to follow-up</td>
+    </tr>
+    <tr>
+      <td>changed</td>
+      <td>current worktree</td>
+      <td><code>MaxDeltaS=0.003</code>, pass <code>16/13/9</code>, <code>PercentRefinement=30</code></td>
+      <td class="num">deferred</td>
+      <td class="num">deferred</td>
+      <td>deferred to follow-up</td>
+    </tr>
+    <tr>
+      <th>delta</th>
+      <th colspan="2">changed - baseline</th>
+      <th class="num">deferred</th>
+      <th class="num">deferred</th>
+      <th>deferred to follow-up</th>
+    </tr>
+  </table>
+
+  <div class="note warn">
+    <b>비교 조건:</b> 두 실행 모두 같은 fixed TOML, 같은 seed, <code>cores=4</code>, <code>gpus=0</code>을 사용한다.
+    가능하면 동시에 실행해 같은 부하 조건에서 비교한다. AEDT/license/runtime 때문에 동시 실행이 실패하면 그 실패
+    지점을 이 표에 남긴다.
+  </div>
+</section>
+
+<section id="tasks">
+  <h2>6. 작업 순서</h2>
+  <table>
+    <tr><th>#</th><th>Task</th><th>Files</th><th>Required check</th></tr>
+    <tr><td class="num">1</td><td>Expand TX ferrite sheet count range to max 5.</td><td><code>src/peetsfea/data/0.3.x_sweep.toml</code>, tests/docs</td><td><code>ferrite.tx_mull_sheet_count</code> accepts sampled values 1 through 5 and remains one free owner path.</td></tr>
+    <tr><td class="num">2</td><td>Prove 5 TX ferrite sheets can be generated.</td><td><code>tests/test_ssw_step.py</code></td><td><code>build_ssw_body_boxes</code> emits five TX MULL ferrite sheet bodies for a fixed 5-sheet point.</td></tr>
+    <tr><td class="num">3</td><td>Remove runner-facing <code>semi_dry</code> mode.</td><td><code>src/peetsfea/ssw_random_sample_reports.py</code>, tests/docs</td><td><code>semi_dry</code> raises; full mode keeps structured report output.</td></tr>
+    <tr><td class="num">4</td><td>Harden full solve setup.</td><td><code>src/peetsfea/backend/pyaedt/ssw_ports.py</code>, backend tests</td><td><code>MaxDeltaS=0.003</code>, pass <code>16/13/9</code>, <code>PercentRefinement=30</code>.</td></tr>
+    <tr><td class="num">5</td><td>Defer baseline vs changed timing comparison.</td><td><code>run/</code> artifacts</td><td>Timing comparison is a follow-up task, not a blocker for this rules commit.</td></tr>
+    <tr><td class="num">6</td><td>Run required validation.</td><td>commands from <code>run/</code></td><td>pytest, pyright, HTML parser, diff check, and real headless AEDT validation.</td></tr>
+  </table>
+</section>
+
+<section id="acceptance">
+  <h2>7. 완료 기준</h2>
+  <ul>
+    <li><code>peetsfea.__version__</code>, <code>SUPPORTED_SPEC_VERSION</code>, <code>SPEC_VERSION</code>, and package TOML <code>spec_version</code> are all <code>0.3.8.0</code>.</li>
+    <li><code>check_ssw_toml_in_design_space(DEFAULT_SOURCE_TOML_PATH, DEFAULT_REFERENCE_TOML_PATH)</code> reports <code>dimension_count == 18</code>.</li>
+    <li><code>free_owner_paths</code> does not contain <code>rx_ssw_coil.is_ssw_enabled</code>, <code>rx_ssw_coil.no_ssw_qturn_start_int</code>, or <code>rx_ssw_coil.no_ssw_qturn_n_int</code>.</li>
+    <li><code>ferrite.tx_mull_sheet_count</code> is still one free owner path, with integer sampled values allowed from <code>1</code> through <code>5</code>.</li>
+    <li><code>semi_dry</code> is not an accepted runner-facing report mode.</li>
+    <li>Full solve setup uses <code>MaxDeltaS=0.003</code>, pass <code>16/13/9</code>, and <code>PercentRefinement=30</code>.</li>
+    <li>Baseline vs changed solve-time comparison is explicitly deferred to a follow-up task.</li>
+    <li>Generated STEP and ledger identify TX/RX as SSW geometry; RX normal spiral copper is not a valid 0.3.8.x output.</li>
+    <li>Raw report contract still exports <code>Results1_Pass</code>, <code>Results2_Last</code>, and <code>Results3_Freq</code>.</li>
+    <li>All changed tests pass from <code>run/</code> using <code>../.venv/bin/pytest</code>.</li>
+    <li><code>../.venv/bin/pyright ../src ../entry ../tests</code> has no diagnostics.</li>
+    <li>Because this changes STEP/AEDT-facing geometry behavior, a real headless AEDT validation is run from <code>run/</code>. If AEDT or license is unavailable, the release remains explicitly incomplete.</li>
+  </ul>
+  <div class="note ok">
+    0.3.8.0의 핵심 판단 기준은 "보기 위해 임시로 통과"가 아니라, 버전/spec/test/report/AEDT 검증까지 새 형상 계약으로
+    일관되게 닫히는 것이다.
+  </div>
+</section>
+
+</main>
+</body>
+</html>

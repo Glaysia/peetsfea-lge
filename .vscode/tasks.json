@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "clean-run",
+      "type": "shell",
+      "command": "mkdir -p ${workspaceFolder}/run && find ${workspaceFolder}/run -mindepth 1 -maxdepth 1 -exec rm -rf {} +",
+      "problemMatcher": []
+    },
+    {
+      "label": "install-peetsfea-all",
+      "type": "shell",
+      "command": "uv pip install --python ${workspaceFolder}/.venv/bin/python -e \".[all]\"",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "prepare-0.3.0-ssw-debug",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "install-peetsfea-all"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

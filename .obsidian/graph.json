@@ -1,0 +1,93 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": true,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": false,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "path:sdd/architecture",
+      "color": {
+        "a": 1,
+        "rgb": 6193580
+      }
+    },
+    {
+      "query": "path:sdd/code",
+      "color": {
+        "a": 1,
+        "rgb": 10731148
+      }
+    },
+    {
+      "query": "path:sdd/plans",
+      "color": {
+        "a": 1,
+        "rgb": 13666160
+      }
+    },
+    {
+      "query": "path:sdd/diagrams",
+      "color": {
+        "a": 1,
+        "rgb": 8962256
+      }
+    },
+    {
+      "query": "path:release-notes",
+      "color": {
+        "a": 1,
+        "rgb": 14212841
+      }
+    },
+    {
+      "query": "tag:type2",
+      "color": {
+        "a": 1,
+        "rgb": 9419963
+      }
+    },
+    {
+      "query": "tag:plate-stack",
+      "color": {
+        "a": 1,
+        "rgb": 12542314
+      }
+    },
+    {
+      "query": "tag:setup-ready",
+      "color": {
+        "a": 1,
+        "rgb": 15453067
+      }
+    },
+    {
+      "query": "tag:governance",
+      "color": {
+        "a": 1,
+        "rgb": 8495553
+      }
+    },
+    {
+      "query": "tag:legacy",
+      "color": {
+        "a": 1,
+        "rgb": 11833005
+      }
+    }
+  ],
+  "collapse-display": false,
+  "showArrow": true,
+  "textFadeMultiplier": 0,
+  "nodeSizeMultiplier": 1.0953125,
+  "lineSizeMultiplier": 1.325,
+  "collapse-forces": false,
+  "centerStrength": 0.604166666666667,
+  "repelStrength": 14.1666666666667,
+  "linkStrength": 0.635416666666667,
+  "linkDistance": 321,
+  "scale": 0.200225830078125,
+  "close": true
+}

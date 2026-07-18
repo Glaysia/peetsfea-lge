@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SSW 메시 길이 계획 (0.3.9.2) — 트레이스 너비 절반 기반 적응형</title>
+<style>
+  :root{--bg:#0b1020;--panel:#161f3d;--soft:#121a33;--bd:#26315c;--tx:#e6ebff;--mut:#9aa6c9;
+        --ac:#5b8cff;--ac2:#34d4b7;--warn:#ffb454;--ok:#34d4b7;--todo:#ffb454;--code:#0d1428;--bad:#ff7878;}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 560px at 82% -8%,#1a2342 0,transparent 60%),var(--bg);
+       color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.65}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+  header{padding:64px 0 28px;border-bottom:1px solid var(--bd)}
+  .badge{display:inline-flex;gap:8px;align-items:center;padding:5px 12px;border:1px solid var(--bd);
+         background:var(--soft);border-radius:999px;font-size:12.5px;color:var(--mut)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 10px var(--warn)}
+  h1{font-size:clamp(26px,4.4vw,40px);line-height:1.15;margin:18px 0 8px;letter-spacing:-.02em}
+  h1 .g{background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:var(--mut);max-width:820px;font-size:16px}
+  section{padding:34px 0;border-bottom:1px solid var(--bd)}
+  h2{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+  h2 .n{color:var(--ac2);font-variant-numeric:tabular-nums}
+  .sub{color:var(--mut);margin:0 0 18px;font-size:14.5px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  th,td{padding:9px 12px;border:1px solid var(--bd);text-align:left;vertical-align:top}
+  th{background:var(--soft);color:var(--mut);font-weight:600}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:.92em;background:var(--code);
+       padding:1px 6px;border-radius:6px;color:#cdd9ff}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700}
+  .done{background:rgba(52,212,183,.15);color:var(--ok);border:1px solid rgba(52,212,183,.35)}
+  .todo{background:rgba(255,180,84,.13);color:var(--todo);border:1px solid rgba(255,180,84,.35)}
+  .bad{background:rgba(255,120,120,.13);color:var(--bad);border:1px solid rgba(255,120,120,.4)}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:18px;margin:10px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .note{margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(255,180,84,.08);
+        border:1px solid rgba(255,180,84,.3);color:#ffd9a3;font-size:13.5px}
+  ul{margin:6px 0 0;padding-left:20px;color:var(--mut)}
+  ul li{margin:3px 0}
+  .eq{background:var(--code);border:1px solid var(--bd);border-radius:10px;padding:12px 16px;color:#cdd9ff;
+      font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:13px;overflow-x:auto;white-space:pre}
+  footer{padding:28px 0 56px;color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <span class="badge"><span class="dot"></span> peetsfea · 계획서 · SSW mesh length</span>
+  <h1>SSW 메시 길이 계획 — <span class="g">트레이스 너비 절반 기반 적응형</span> (0.3.9.2)</h1>
+  <p class="lede">0.3.9.2의 메시·setup·sweep은 GUI에서 검증한 녹화본 <code>tmp/mesh_pass.py</code>를
+  <b>그대로 기준</b>으로 삼는다. <b>단 하나의 차이</b>: Length op의 <code>MaxLength</code>를 녹화본의 고정
+  <code>"5mm"</code> 대신, <b>TX·RX 트레이스 너비 절반의 최솟값</b>으로 형상에 맞춰 잡는 적응형 값으로 바꾼다.</p>
+  <div class="note"><b>0.3.9.3 갱신:</b> 3&nbsp;mm 하한(floor)을 <b>제거</b>했다. 작은 코일에선 floor가
+  트레이스보다 굵은 메시를 강제해 solve가 깨졌다. 규칙은 이제 floor 없는
+  <code>min(tx/2, rx/2)</code>다.</div>
+</div></header>
+
+<main class="wrap">
+
+<section>
+  <h2><span class="n">1.</span> 규칙 — MaxLength <span class="pill todo">유일한 변경점</span></h2>
+  <p class="sub">두 코일 트레이스 너비 절반의 최솟값을 쓴다(0.3.9.3: floor 제거).</p>
+  <div class="eq">MaxLength_mm = min( tx_trace_width_mm / 2,  rx_trace_width_mm / 2 )</div>
+  <ul>
+    <li><b>min(너비 절반)</b> = 더 가는 코일 기준으로 폭 방향 최소 2셀 보장 → 표면 전류·근접 효과 해상.</li>
+    <li><b>floor 없음</b> = 작은 코일도 트레이스에 맞춰 메시가 가늘어진다. 3&nbsp;mm 하한은
+        트레이스보다 큰 셀을 강제해 solve를 깨뜨려 0.3.9.3에서 제거.</li>
+  </ul>
+  <div class="note">트레이스 너비는 근사라도 무방(요구사항). 정확값이 아니라 <b>메시 셀 상한</b>을 잡는 용도이므로,
+  몇 % 오차는 패스 수렴이 흡수한다. 나머지 메시·setup·sweep 값은 §2의 녹화본을 그대로 따른다.</div>
+</section>
+
+<section>
+  <h2><span class="n">2.</span> baseline = <code>tmp/mesh_pass.py</code> (GUI 녹화본)</h2>
+  <p class="sub">아래 값들을 그대로 채택한다. <b>MaxLength 한 줄만</b> §1의 적응형으로 대체.</p>
+  <table>
+    <thead><tr><th>항목</th><th>녹화본 값</th><th>0.3.9.2</th></tr></thead>
+    <tbody>
+      <tr><td>Mesh op</td><td><code>EditLengthOp "Length1"</code> (NAME:Copper)</td><td>동일</td></tr>
+      <tr><td>RefineInside</td><td class="num">False</td><td>동일</td></tr>
+      <tr><td>RestrictElem / NumMaxElem</td><td class="num">True / 20000</td><td>동일</td></tr>
+      <tr><td>RestrictLength</td><td class="num">True</td><td>동일</td></tr>
+      <tr><td><b>MaxLength</b></td><td class="num">"5mm" (고정)</td><td><b>max(min(tx/2,rx/2), 3mm)</b></td></tr>
+      <tr><td>Frequency / MaxDeltaS</td><td class="num">6.78MHz / 0.003</td><td>동일</td></tr>
+      <tr><td>Maximum / Minimum / MinConverged Passes</td><td class="num">16 / 16 / 16</td><td>동일</td></tr>
+      <tr><td>PercentRefinement</td><td class="num">20</td><td>동일</td></tr>
+      <tr><td>BasisOrder / PortAccuracy / Solver</td><td class="num">0 / 2 / Direct</td><td>동일</td></tr>
+      <tr><td>Sweep</td><td class="num">LinearCount 0.1–100MHz, Count 81, Interpolating</td><td>동일</td></tr>
+    </tbody>
+  </table>
+  <div class="note">현재 코드(0.3.9.1: NumMaxElem 15000, MaxLength 1mm, 패스 25/23/5, PerRefine 26)와
+  다르므로, 0.3.9.2는 위 녹화본 값으로 <b>전부 맞춘 뒤</b> MaxLength만 적응형으로 둔다.</div>
+</section>
+
+<section>
+  <h2><span class="n">3.</span> 트레이스 너비 출처 — 죽은 코드 말고 실제 빌더 경로</h2>
+  <p class="sub">너비의 SSOT는 실제 STEP을 만드는 coilmaker 경로다. <code>ssw_step._coil_boxes()</code>는 빌드에 쓰이지 않는 구버전이므로 쓰지 않는다.</p>
+  <div class="eq">period_mm      = coilmaker.ssw_active_surface_perimeter(config, frame)   # 감기는 단면 둘레
+pitch_mm       = period_mm / ssw_turn
+trace_width_mm = pitch_mm * (1 - gap_ratio)
+# == coilmaker._ssw_trace_context(config, frame).trace_width_mm</div>
+  <ul>
+    <li>SSW는 동심 루프가 아니라 <b>단면 둘레를 따라</b> 트레이스를 감는다 → pitch는 둘레/turn 기반.</li>
+    <li>참조: <code>src/peetsfea/coilmaker.py</code> <code>_ssw_trace_context()</code> (≈ line 1520-1536).</li>
+    <li>이 값은 빌더가 실제로 트레이스를 만들 때 쓰는 값과 <b>동일</b>(근사 아님).</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">4.</span> 현재 fixed.toml 기준 수치 확인</h2>
+  <p class="sub"><code>0.3.x_fixed.toml</code> 예시점에서 규칙을 적용했을 때의 값. 현재 형상은 충분히 커서 floor가 걸리지 않고 RX 절반이 채택된다.</p>
+  <table>
+    <thead><tr><th>코일</th><th class="num">trace_width (mm)</th><th class="num">width/2 (mm)</th></tr></thead>
+    <tbody>
+      <tr><td>TX</td><td class="num">≈ 13.09</td><td class="num">≈ 6.54</td></tr>
+      <tr><td>RX</td><td class="num">≈ 8.93</td><td class="num">≈ 4.47</td></tr>
+    </tbody>
+  </table>
+  <div class="eq">MaxLength = max( min(6.54, 4.47), 3.0 ) = max(4.47, 3.0) = 4.47 mm</div>
+  <div class="note">즉 현재 형상에선 MaxLength가 녹화본의 <b>5&nbsp;mm → ≈ 4.47&nbsp;mm</b>로 거의 동일(살짝 촘촘).
+  트레이스가 작아져 RX 절반이 3&nbsp;mm 밑으로 내려가면 그때부터 3&nbsp;mm에서 고정된다(위로 클램프).</div>
+</section>
+
+<section>
+  <h2><span class="n">5.</span> 구현 범위 (다음 작업 — 본 문서는 계획만)</h2>
+  <div class="grid2">
+    <div class="card">
+      <b>코드</b>
+      <ul>
+        <li><code>ssw_ports.py</code>: 메시·setup·sweep 상수를 §2 녹화본 값으로 맞춤
+            (NumMaxElem 20000, 패스 16/16/16, PerRefine 20, MaxDeltaS 0.003, sweep 81 LinearCount …).</li>
+        <li><code>MESH_MAX_LENGTH</code> 고정 상수를 제거/대체하고,
+            <code>max(min(tx/2, rx/2), 3mm)</code>를 계산하는 헬퍼로 대체.</li>
+        <li>트레이스 너비는 <code>coilmaker._ssw_trace_context(...).trace_width_mm</code>에서 가져온다(SSOT 단일화).</li>
+        <li>계산 결과를 <code>"&lt;x&gt;mm"</code> 문자열로 mesh payload(<code>max_length</code>)에 주입,
+            mesh summary(dict)의 <code>max_length</code>로도 노출 → 빌드 로그에서 검증.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <b>테스트</b>
+      <ul>
+        <li><code>test_ssw_ports.py</code>: 현재 형상에서 <code>max_length ≈ "4.47mm"</code>(RX 절반) 가드.</li>
+        <li>작은 형상(트레이스 너비 &lt; 6&nbsp;mm) 합성 케이스에서 floor가 걸려 <code>"3mm"</code>로 고정되는지 확인.</li>
+        <li>패스/NumMaxElem 등 §2 값 반영 여부 가드 갱신, real headless AEDT 빌드 1회로 payload 확인.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">버전: solver 튜닝(메시·패스·sweep)만 바뀌고 design space/형상은 불변 →
+  <b>패키지 버전만 0.3.9.2로 bump</b>, spec_version은 0.3.9.0 유지.</div>
+</section>
+
+<section>
+  <h2><span class="n">6.</span> 근거 / 트레이드오프</h2>
+  <ul>
+    <li><b>왜 절반?</b> 트레이스 폭에 최소 2셀 → 표면 전류 분포의 1차 변화는 잡되 과메싱은 피함.</li>
+    <li><b>왜 3&nbsp;mm 하한?</b> 트레이스가 작아질수록 너비/2도 작아지는데, 그대로 두면 셀이 과하게 가늘어져
+        element가 폭증하고 solve가 느려진다. 3&nbsp;mm에서 멈춰 비용을 막는다.</li>
+    <li><b>왜 TX·RX 둘 다(min)?</b> 메시 op는 두 코일 + FR4에 공통 적용 → 더 가는 쪽(=더 작은 너비) 기준이어야
+        양쪽 모두 충분히 해상.</li>
+    <li><b>비용:</b> 현재 형상은 녹화본 5&nbsp;mm와 거의 같은 4.47&nbsp;mm라 영향 미미.
+        형상이 작아져 floor(3&nbsp;mm)에 닿으면 더는 가늘어지지 않아 비용 상한이 고정된다.</li>
+  </ul>
+</section>
+
+</main>
+<footer><div class="wrap">peetsfea · SSW 메시 길이 적응형 계획서 · 0.3.9.2 (계획 단계, 코드 미수정)</div></footer>
+</body>
+</html>

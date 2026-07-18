@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SSW solve 비용 계획 (0.3.9.1) — skin-depth 메시 되돌리고 코어 16</title>
+<style>
+  :root{--bg:#0b1020;--panel:#161f3d;--soft:#121a33;--bd:#26315c;--tx:#e6ebff;--mut:#9aa6c9;
+        --ac:#5b8cff;--ac2:#34d4b7;--warn:#ffb454;--ok:#34d4b7;--todo:#ffb454;--code:#0d1428;--bad:#ff7878;}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 560px at 82% -8%,#1a2342 0,transparent 60%),var(--bg);
+       color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.65}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+  header{padding:64px 0 28px;border-bottom:1px solid var(--bd)}
+  .badge{display:inline-flex;gap:8px;align-items:center;padding:5px 12px;border:1px solid var(--bd);
+         background:var(--soft);border-radius:999px;font-size:12.5px;color:var(--mut)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 10px var(--warn)}
+  h1{font-size:clamp(26px,4.4vw,40px);line-height:1.15;margin:18px 0 8px;letter-spacing:-.02em}
+  h1 .g{background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:var(--mut);max-width:820px;font-size:16px}
+  section{padding:34px 0;border-bottom:1px solid var(--bd)}
+  h2{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+  h2 .n{color:var(--ac2);font-variant-numeric:tabular-nums}
+  .sub{color:var(--mut);margin:0 0 18px;font-size:14.5px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  th,td{padding:9px 12px;border:1px solid var(--bd);text-align:left;vertical-align:top}
+  th{background:var(--soft);color:var(--mut);font-weight:600}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:.92em;background:var(--code);
+       padding:1px 6px;border-radius:6px;color:#cdd9ff}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700}
+  .done{background:rgba(52,212,183,.15);color:var(--ok);border:1px solid rgba(52,212,183,.35)}
+  .todo{background:rgba(255,180,84,.13);color:var(--todo);border:1px solid rgba(255,180,84,.35)}
+  .bad{background:rgba(255,120,120,.13);color:var(--bad);border:1px solid rgba(255,120,120,.4)}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:18px;margin:10px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .note{margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(255,180,84,.08);
+        border:1px solid rgba(255,180,84,.3);color:#ffd9a3;font-size:13.5px}
+  ul{margin:6px 0 0;padding-left:20px;color:var(--mut)}
+  ul li{margin:3px 0}
+  .eq{background:var(--code);border:1px solid var(--bd);border-radius:10px;padding:12px 16px;color:#cdd9ff;
+      font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:13px;overflow-x:auto;white-space:pre}
+  footer{padding:28px 0 56px;color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <span class="badge"><span class="dot"></span> peetsfea · 계획서 · SSW solve cost</span>
+  <h1>SSW solve 비용 계획 — <span class="g">skin-depth 메시 되돌리고 코어 16</span> (0.3.9.1)</h1>
+  <p class="lede">0.3.8.3에서 넣은 구리 <b>skin-depth 메시</b>가 <b>초기 메시 element를 ~15만 개로 폭증</b>시켜
+  solve가 비정상적으로 오래 걸린다. GUI 실험(<code>mesh_pass.py</code>)에서 <b>단일 length 메시(15k, skin-depth 없음)</b>는
+  adaptive 25패스를 돌려도 오히려 훨씬 빨리 끝났다. 따라서 <b>① skin-depth 메시를 가벼운 length 메시로 되돌리고</b>,
+  <b>② solver 코어를 4 → 16으로 늘린다.</b></p>
+</div></header>
+
+<main class="wrap">
+
+<section>
+  <h2><span class="n">1.</span> 문제 — skin-depth 메시가 초기 element를 폭증시켜 느림 <span class="pill bad">regression</span></h2>
+  <p class="sub">0.3.8.3의 <code>CopperSkinDepth</code> op(25µm, 4 layers)은 구리 표면을 과하게 잘게 쪼개 <b>adaptive가 시작하기도 전</b>의 초기 메시를 수십만 tet로 만든다. 이후 모든 패스가 그 큰 메시 위에서 도므로 패스당 시간이 급증한다.</p>
+  <div class="eq">[관측] skin-depth 빌드 solve 프로파일
+  Initial Meshing → Tetrahedra: 206,504  (Length1 + SkinDepth1)
+  Adaptive Meshing: 00:16:32  ·  Frequency Sweep: 00:30:06  ·  합계 ≈ 00:46:52</div>
+  <div class="note"><b>핵심:</b> 시작 element가 ~15만~20만이면 adaptive 첫 패스부터 메모리·시간이 폭증한다.
+  skin-depth는 "정확도엔 이론적으로 맞는" 선택이지만, <b>이 형상·주파수(6.78MHz)에선 비용이 정확도 이득을 압도</b>한다.</div>
+</section>
+
+<section>
+  <h2><span class="n">2.</span> 근거 — 가벼운 메시 + 많은 패스가 더 빠름 <span class="pill done">GUI 실험</span></h2>
+  <p class="sub"><code>0622_3</code>를 AEDT GUI에서 직접 수정·녹화한 <code>mesh_pass.py</code>는 메시를 단순화하고 패스를 늘렸는데도 실측이 훨씬 빨랐다.</p>
+  <div class="grid2">
+    <div class="card"><b>현재 코드 (0.3.8.3)</b>
+      <ul>
+        <li>메시: <code>CopperSkinDepth</code>(50000, 25µm, 4 layers) + <code>DielectricMesh</code>(50000, 1mm)</li>
+        <li>초기 element: <b>~15만+</b> (skin-depth가 지배)</li>
+        <li>패스: 16 / 9 / 4, refine 26%</li>
+        <li>실측: <b>느림</b> (초기 메시가 무거워 패스마다 비쌈)</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:rgba(52,212,183,.35)"><b>녹화 실험 (mesh_pass.py)</b>
+      <ul>
+        <li>메시: <b>단일 <code>Length1</code></b>, NumMaxElem <b>15000</b>, 1mm, <b>skin-depth 없음</b></li>
+        <li>초기 element: <b>~1.5만</b> (10배 작게 시작)</li>
+        <li>패스: 녹화 25 / 25 / 5 → <b>계획 25 / 23 / 5</b> (max 25, min 23, conv 5; min을 23으로 낮춰 조기수렴 여지), refine 25%</li>
+        <li>실측: <b>훨씬 빨리 끝남</b> ← 작게 시작해서 adaptive가 필요한 곳만 키움</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">교훈: <b>"작게 시작해서 adaptive가 키우게"</b> 두는 편이, "처음부터 skin-depth로 크게 깔고 시작"하는 것보다 빠르다.
+  HFSS adaptive는 어차피 필요한 곳을 refine하므로, 시작 메시를 인위적으로 부풀릴 이유가 약하다.</div>
+</section>
+
+<section>
+  <h2><span class="n">3.</span> 계획 ① — skin-depth 메시를 가벼운 length 메시로 되돌림 <span class="pill todo">0.3.9.1</span></h2>
+  <p class="sub">0.3.8.3에서 도입한 2-op 구조(skin-depth + dielectric)를 <b>되돌려</b>, 초기 element를 낮춘다.</p>
+  <table>
+    <tr><th>항목</th><th>현재 (0.3.8.3)</th><th>계획 (0.3.9.1)</th></tr>
+    <tr><td>구리 메시 op</td><td><code>AssignSkinDepthOp</code> (25µm / 4 layers)</td><td><b>제거</b> → length 기반으로 통합</td></tr>
+    <tr><td>메시 구조</td><td>CopperSkinDepth + DielectricMesh</td><td><b>단일 length op</b> (구리+유전체) 또는 경량 2-op</td></tr>
+    <tr><td><code>NumMaxElem</code></td><td>50000</td><td><b>15000</b> (실험치)</td></tr>
+    <tr><td><code>MaxLength</code></td><td>1mm</td><td>1mm (유지)</td></tr>
+  </table>
+  <div class="card"><b>변경 대상</b>
+    <ul>
+      <li><code>src/peetsfea/backend/pyaedt/ssw_ports.py</code> — <code>_assign_recorded_mesh</code>, <code>_copper_mesh_payload</code>/<code>_dielectric_mesh_payload</code>, <code>MESH_MAX_ELEMENTS</code>(50000→15000), skin-depth 상수 제거</li>
+      <li><code>SswAedtMeshSummary</code> / <code>MeshModuleSession</code>(AssignSkinDepthOp) 정리 — 0.3.8.3 변경의 역작업</li>
+      <li>관련 테스트(<code>test_ssw_ports.py</code>) mesh 단언 갱신</li>
+    </ul>
+  </div>
+  <div class="note">정확도 측면: skin-depth를 빼면 구리 표피 해상도는 adaptive refinement에 맡긴다. 6.78MHz 표피깊이 ~25µm는
+  Rac/Q에 영향을 주므로, <b>제거 후 후속 측정에서 L/R/Q가 허용 오차 안인지 반드시 확인</b>한다(아래 §5).</div>
+</section>
+
+<section>
+  <h2><span class="n">4.</span> 계획 ② — solver 코어 4 → 16 <span class="pill todo">0.3.9.1</span></h2>
+  <p class="sub">0.3.7.1에서 동시 solve 경합을 막으려 코어를 4로 고정했는데, 단일 solve를 빠르게 돌리려면 코어를 늘린다.</p>
+  <table>
+    <tr><th>상수</th><th>위치</th><th>현재</th><th>계획</th></tr>
+    <tr><td><code>FORCED_SOLVE_CORES</code></td><td><code>src/peetsfea/aedt/wrappers.py</code></td><td class="num">4</td><td class="num"><b>16</b></td></tr>
+    <tr><td><code>SOLVE_CORES</code></td><td><code>src/peetsfea/backend/pyaedt/ssw_ports.py</code></td><td class="num">4</td><td class="num"><b>16</b></td></tr>
+  </table>
+  <div class="note"><b>주의:</b> 코어 16은 <b>단일 solve를 빠르게</b> 하지만, N개 동시 solve를 돌리면 다시 경합한다(0.3.7.1가 막으려던 문제).
+  병렬 샘플링 시에는 동시 solve 수를 줄이거나 코어를 나눠야 한다 — 16코어는 <b>1개씩 돌릴 때 최적</b>.</div>
+</section>
+
+<section style="border-bottom:none">
+  <h2><span class="n">5.</span> 검증·측정 계획</h2>
+  <div class="card">
+    <ul>
+      <li><b>속도</b>: 같은 fixed TOML·seed로 (a) 현재 skin-depth 4코어 vs (b) 경량 메시 16코어 solve 시간 비교. profile의 Initial Meshing tet 수와 Adaptive/Sweep elapsed를 기록.</li>
+      <li><b>정확도</b>: skin-depth 제거 전후 <code>Results3_Freq</code>의 L_tx/L_rx/Q, <code>Results1_Pass</code>의 reZ(저항)를 비교 — 구리 손실(Rac)이 허용 오차 내인지 확인.</li>
+      <li><b>회귀 방지</b>: 초기 메시 element 수를 ledger/telemetry에 남겨, 다시 폭증하면 바로 보이게 한다.</li>
+      <li>pure-Python tests, pyright, real headless AEDT validation 통과.</li>
+    </ul>
+  </div>
+  <div class="note"><b>버전:</b> 설계공간(geometry SSOT)은 안 바뀌므로 spec_version은 0.3.9.0 유지, <b>패키지 버전만 0.3.9.1</b>로
+  올린다(솔버 비용 튜닝 — 0.3.8.1~0.3.8.3 선례와 동일).</div>
+</section>
+
+</main>
+<footer><div class="wrap">peetsfea · SSW solve 비용 계획 (skin-depth 되돌림 + 코어 16) · 0.3.9.1</div></footer>
+</body>
+</html>

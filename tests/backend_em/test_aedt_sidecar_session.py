@@ -1,0 +1,15 @@
+from __future__ import annotations
+
+from ._aedt_sidecar_support import (
+    test_capability_helpers_raise_when_required_features_are_missing,
+    test_ensure_ferrite_material_raises_on_material_creation_or_property_failure,
+    test_hfss_session_helpers_raise_on_false_for_report_source_setup_and_discovery,
+    test_material_and_version_helpers_work,
+    test_probe_helpers_raise_for_missing_geometry_and_boundary_capabilities,
+    test_release_desktop_session_kills_process_on_failure,
+    test_release_desktop_session_kills_process_when_release_raises,
+    test_remaining_name_validated_wrappers_enforce_limit,
+    test_wrap_hfss_and_other_helpers_expose_proxy_views,
+    test_wrap_hfss_proxy_properties_support_downstream_helpers,
+)
+
