@@ -13,7 +13,7 @@ peetsfea는 TOML 명세에서 SSW 코일 설계를 결정적으로 생성하고,
 영문 문서는 [README.en.md](README.en.md)를 참고하세요.
 
 ## 현재 계약
-- 버전: `0.3.8.0`
+- LGE 릴리스 라벨: `lge-0.1.0` (`project.version = "0.1.0+lge"`는 동일 라벨의 PEP 440 호환 표기)
 - 설계 공간 SSOT: 패키지 데이터 `src/peetsfea/data/0.3.x_sweep.toml` (`DEFAULT_REFERENCE_TOML_PATH`). 정규 fixed 점은 `src/peetsfea/data/0.3.x_fixed.toml` (`DEFAULT_SOURCE_TOML_PATH`). 둘 다 wheel에 동봉되어 설치 환경에서도 해석됩니다.
 - TOML surface: `[design]` · `[backend]` · `[fixed_dimensions]` · `[[modeled_objects]]`(tx/rx/under coil) · `[ferrite]` · `[constraints]`.
 - 제약: TX/RX SSW coil은 enabled 고정이며 `gcd(turn_n_int, twist_factor) == 1`, RX `turn_n_int > 1`, TX/RX `void_profile`은 scaled void profile `1`로 고정.
@@ -26,11 +26,69 @@ peetsfea는 TOML 명세에서 SSW 코일 설계를 결정적으로 생성하고,
 ## 실행
 테스트는 `run/`에서 실행합니다.
 
+프로젝트 환경은 Miniconda와 분리된 `uv` 프로젝트 `.venv`에서 시스템 CPython
+`3.14.4` 및 PyAEDT `1.3.0`을 사용합니다. 배포 버전 `0.1.0+lge`는 요청한
+릴리스 라벨 `lge-0.1.0`의 PEP 440 호환 표기이며,
+`peetsfea.__version__`은 원래 라벨을 그대로 반환합니다.
+
 ```bash
+uv sync --extra all
 cd run
 ../.venv/bin/pytest -q ../tests -m "not pyaedt_integration"   # 순수 Python
 ../.venv/bin/pyright ../src ../entry ../tests
 ```
+
+LGE_EVDD의 현재 `0.2.0` CAD 범위는 FR4, 2층 일차 플라나 권선, 센터탭용 이차 반권선
+2개입니다. 저장소 루트에서 다음 명령은
+`src/peetsfea/data/lgevdd_0.2.0_fixed.toml`의 고정 range를 읽어
+`run/lgevdd_pcb/lgevdd_pcb.step`을 생성합니다. STEP에는 connector hole이
+있고 중앙 `146 × 7 mm` 영역이 페라이트 중심 다리용으로 관통된 FR4와, 위·아래층
+및 내부 connector가 fuse된 일차 구리 권선이 별도 body로 들어갑니다. 중앙 구멍은
+별도 숨은 치수가 아니라 일차 권선의 `center_keepout_width_x_mm` 및
+`center_keepout_height_y_mm`를 그대로 사용합니다.
+
+```bash
+uv run dev --ocp-port 3940
+```
+
+이차측만 확인할 때는 다음 명령을 사용합니다.
+
+```bash
+uv run dev --ocp-port 3940 --type=secondary
+```
+
+이 명령은 FR4와 일차측을 제외하고 `secondary_planar_coil_1`,
+`secondary_planar_coil_2`만 포함한
+`run/lgevdd_pcb/lgevdd_secondary.step`을 생성해 OCP에 표시합니다. 두 body는
+레거시처럼 각각 두 직사각형 루프를 직사각형 Z 브리지로 연결하며 서로 fuse하지
+않습니다. 센터탭 전기 접속도 CAD에는 만들지 않고 외부 회로의 책임으로 남깁니다.
+
+FR4, 일차측, 이차측을 한 번에 확인할 때는 다음 명령을 사용합니다.
+
+```bash
+uv run dev --ocp-port 3940 --type=both
+```
+
+이 명령은 네 body를 `run/lgevdd_pcb/lgevdd_both.step`에 저장합니다. 원래 장치는
+PCB planar transformer지만 레거시 CAD는 `Tx_preg/Rx_preg`를 간격으로만 사용하고
+FR4 solid를 생성하지 않았습니다. 현재 초록색 `fr4_board`는 일차측 두 구리층
+사이의 중앙 dielectric 한 장이며 전체 다층 PCB laminate를 재현한 것은 아닙니다.
+
+생성 직후 STEP을 다시 읽어 body 이름·solid 수·bbox·부피를 검증하고, OCP에는
+FR4를 반투명 초록색, 일차 권선을 구리색으로 표시합니다. OCP CAD Viewer는 명령에
+넘긴 포트와 같은 포트에서 먼저 실행 중이어야 합니다. 다른 입력이나 출력 위치는
+각각 `--toml`, `--output-dir`로 지정합니다.
+
+현재 고정점은 FR4 `240 × 40 × 0.02 mm`, 총 14턴(위 7턴·아래 7턴),
+중앙 FR4 관통구멍 `146 × 7 mm`, 트레이스 `1.5 × 0.175 mm`입니다. 모든 수치는 TOML에
+`[정수여부, 시작, 끝, 갯수]` 형식으로 명시되어 있습니다. 생성기는 2층을
+고정하고 2 이상의 임의 총 턴수를 지원하며, 홀수 턴의 추가 한 턴은 위층에 둡니다.
+이차측 fixed point는 반권선당 2턴, 트레이스 `7.7 × 0.105 mm`, X/Y 내부 여유
+`2.8/3.3 mm`, preg `0.06 mm`입니다. 이차측 생성기는 1턴 이상의 턴수를 지원하고
+홀수 턴의 추가 턴은 첫 레이어에 둡니다.
+제약식은 `path/value/func/op` 구조를 whitelist 기반으로 평가하고 임의 문자열
+코드를 실행하지 않습니다. 이 vertical slice의 영구 산출물은 STEP 하나이며
+별도 ledger는 생성하지 않습니다.
 
 설계 공간 안에서 seed 범위로 랜덤 SSW STEP 파일을 생성하고(`entry/sample.py`), 그중 한 seed를 OCP로 봅니다(`entry/view.py`).
 

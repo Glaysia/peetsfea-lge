@@ -1,0 +1,417 @@
+# LGE_EVDD 0.2.0 fixed authoring input.
+# Active scope: FR4, one primary planar body, and two secondary planar bodies.
+# Excluded: magnetic core, center-tap circuit connection, air region, ports,
+# excitation, mesh, and solve.
+#
+# Legacy geometry reference:
+#   LGE_transformer_2series_EI_pl_pl_v1/script1.py
+#   Parameter.get_random_variable(), Sim.set_variable(), Sim.create_winding()
+#
+# Range format:
+# - [true, start, end, count]  : integer range
+# - [false, start, end, count] : floating-point range
+# - This fixed TOML freezes every range with start == end and count == 1.
+#
+# This is a representative first-view point inside the legacy planar-planar
+# domain. It is not yet gold-matched to a saved planar-planar AEDT geometry.
+
+spec_version = "0.2.0"
+schema_id = "peetsfea.lgevdd.planar.step.v2"
+runtime_compatible = true
+
+[design]
+units = "mm"
+geometry_scope = "primary_secondary_planar"
+
+[backend]
+authoring_tool = "build123d"
+interchange_format = "step"
+
+# The magnetic core is not generated. This fixed dimension retains the source
+# l2 + l2_tap envelope used to reject a primary coil that cannot fit inside the
+# legacy winding window.
+[fixed_dimensions.legacy_winding_window_depth_mm]
+range = [false, 30.0, 30.0, 1]
+description = "Legacy l2 + l2_tap winding-window depth constraint(mm)"
+
+[[modeled_objects]]
+object_id = "fr4_board"
+role = "fr4"
+enabled = true
+material = "fr4_epoxy"
+model_state = true
+primitive = "box"
+plane = "XY"
+center_xyz = [0.0, 0.0, 0.0]
+
+# Fixed first-view envelope. It contains the current primary planar winding and
+# its positive-X lead. These values remain explicit TOML inputs rather than
+# geometry-code constants.
+[modeled_objects.size_x_mm]
+range = [false, 240.0, 240.0, 1]
+description = "FR4 board X size(mm)"
+
+[modeled_objects.size_y_mm]
+range = [false, 40.0, 40.0, 1]
+description = "FR4 board Y size(mm)"
+
+# Legacy Tx_preg: face-to-face dielectric separation between copper layers.
+[modeled_objects.thickness_mm]
+range = [false, 0.02, 0.02, 1]
+description = "FR4 dielectric thickness along Z(mm)"
+
+[[modeled_objects]]
+object_id = "primary_planar_coil"
+role = "primary_planar_coil"
+enabled = true
+material = "copper"
+model_state = true
+plane = "XY"
+center_xyz = [0.0, 0.0, 0.0]
+conductor_kind = "planar"
+terminal_side = "positive_x"
+stack_axis = "Z"
+bottom_layer_mirror_normal_xyz = [0.0, 1.0, 0.0]
+
+# Legacy w1. It sets both the empty X-width enclosed by the innermost primary
+# trace and the FR4 center-hole X size for the future ferrite center leg.
+[modeled_objects.center_keepout_width_x_mm]
+range = [false, 146.0, 146.0, 1]
+description = "Central keepout and FR4 ferrite-hole X size(mm)"
+
+# Legacy l1_center. It also sets the FR4 center-hole Y size.
+[modeled_objects.center_keepout_height_y_mm]
+range = [false, 7.0, 7.0, 1]
+description = "Central keepout and FR4 ferrite-hole Y size(mm)"
+
+# Legacy create_winding() hard-coded this terminal extension as 40 mm.
+[modeled_objects.lead_extension_x_mm]
+range = [false, 40.0, 40.0, 1]
+description = "Positive-X terminal lead extension from the keepout edge(mm)"
+
+# Total series turns across both copper layers. The legacy path uses
+# ceil(turns / layer_count) rectangular loops per layer.
+[modeled_objects.turns]
+range = [true, 14, 14, 1]
+description = "Total series turns across both primary copper layers"
+
+[modeled_objects.layer_count]
+range = [true, 2, 2, 1]
+description = "Primary copper layer count"
+
+# Legacy Tx_width.
+[modeled_objects.trace_width_mm]
+range = [false, 1.5, 1.5, 1]
+description = "Primary planar trace width(mm)"
+
+# Legacy Tx_height.
+[modeled_objects.copper_thickness_mm]
+range = [false, 0.175, 0.175, 1]
+description = "Primary copper thickness(mm)"
+
+# Legacy Tx_space_x / Tx_space_y: clearance from the central keepout to the
+# innermost trace edge.
+[modeled_objects.inner_clearance_x_mm]
+range = [false, 2.6, 2.6, 1]
+description = "Keepout-to-innermost-trace edge clearance along X(mm)"
+
+[modeled_objects.inner_clearance_y_mm]
+range = [false, 0.6, 0.6, 1]
+description = "Keepout-to-innermost-trace edge clearance along Y(mm)"
+
+# Legacy Tx_layer_space_x / Tx_layer_space_y: edge-to-edge gap between turns.
+[modeled_objects.turn_gap_x_mm]
+range = [false, 1.1, 1.1, 1]
+description = "Adjacent-turn edge gap along X(mm)"
+
+[modeled_objects.turn_gap_y_mm]
+range = [false, 0.2, 0.2, 1]
+description = "Adjacent-turn edge gap along Y(mm)"
+
+[modeled_objects.connector_diameter_ratio_to_trace_width]
+range = [false, 0.8, 0.8, 1]
+description = "Vertical connector diameter divided by trace width"
+
+[modeled_objects.connector_circle_segments]
+range = [true, 12, 12, 1]
+description = "Polygon segment count used for the circular vertical connector"
+
+[[modeled_objects]]
+object_id = "secondary_planar_coil"
+body_ids = ["secondary_planar_coil_1", "secondary_planar_coil_2"]
+role = "secondary_planar_coil"
+enabled = true
+material = "copper"
+model_state = true
+plane = "XY"
+conductor_kind = "planar"
+terminal_side = "negative_x"
+stack_axis = "Z"
+placement_reference = "primary_planar_coil"
+layer_bridge_cross_section = "rectangle"
+center_tap_connection = "external"
+
+[modeled_objects.body_count]
+range = [true, 2, 2, 1]
+description = "Symmetric secondary half-winding body count"
+
+# The fixed point retains the legacy two-turn secondary. The builder accepts
+# every positive turn count and deterministically places ceil(N/2) turns on
+# the first layer and floor(N/2) turns on the second layer.
+[modeled_objects.turns]
+range = [true, 2, 2, 1]
+description = "Series turns in each secondary half-winding"
+
+[modeled_objects.layer_count]
+range = [true, 2, 2, 1]
+description = "Maximum copper layer count in each secondary half-winding"
+
+# Recommended legacy planar-planar fixed point: Rx_width / Rx_height.
+[modeled_objects.trace_width_mm]
+range = [false, 7.7, 7.7, 1]
+description = "Secondary planar trace width(mm)"
+
+[modeled_objects.copper_thickness_mm]
+range = [false, 0.105, 0.105, 1]
+description = "Secondary copper thickness(mm)"
+
+# Legacy Rx_space_x / Rx_space_y. The shared w1 / l1_center keepout remains
+# canonically owned by primary_planar_coil and is not duplicated here.
+[modeled_objects.inner_clearance_x_mm]
+range = [false, 2.8, 2.8, 1]
+description = "Shared keepout-to-secondary-trace edge clearance along X(mm)"
+
+[modeled_objects.inner_clearance_y_mm]
+range = [false, 3.3, 3.3, 1]
+description = "Shared keepout-to-secondary-trace edge clearance along Y(mm)"
+
+# Legacy Rx_layer_space_x / Rx_layer_space_y were sampled but inactive at the
+# two-turn fixed point. Explicit fixed values support generalized turns.
+[modeled_objects.turn_gap_x_mm]
+range = [false, 0.1, 0.1, 1]
+description = "Adjacent secondary-turn edge gap along X(mm)"
+
+[modeled_objects.turn_gap_y_mm]
+range = [false, 0.1, 0.1, 1]
+description = "Adjacent secondary-turn edge gap along Y(mm)"
+
+# One legacy Rx_preg owner controls both internal layer and winding-stack gaps.
+[modeled_objects.secondary_preg_mm]
+range = [false, 0.06, 0.06, 1]
+description = "Secondary internal and primary-to-secondary insulation gap(mm)"
+
+[modeled_objects.lead_extension_x_mm]
+range = [false, 40.0, 40.0, 1]
+description = "Negative-X secondary terminal lead extension from the keepout edge(mm)"
+
+[constraints]
+require_single_series_path = true
+require_connector_overlap_with_both_layers = true
+require_external_center_tap_connection = true
+
+[[constraints.rules]]
+id = "fr4_size_x_positive"
+kind = "comparison"
+message = "FR4 X size must be positive"
+enabled = true
+lhs = { path = "modeled_objects.fr4_board.size_x_mm" }
+op = ">"
+rhs = { value = 0.0 }
+
+[[constraints.rules]]
+id = "fr4_size_y_positive"
+kind = "comparison"
+message = "FR4 Y size must be positive"
+enabled = true
+lhs = { path = "modeled_objects.fr4_board.size_y_mm" }
+op = ">"
+rhs = { value = 0.0 }
+
+[[constraints.rules]]
+id = "fr4_thickness_positive"
+kind = "comparison"
+message = "FR4 thickness must be positive"
+enabled = true
+lhs = { path = "modeled_objects.fr4_board.thickness_mm" }
+op = ">"
+rhs = { value = 0.0 }
+
+[[constraints.rules]]
+id = "fr4_center_hole_x_within_board"
+kind = "comparison"
+message = "FR4 center ferrite hole X size must be smaller than the board"
+enabled = true
+lhs = { path = "modeled_objects.primary_planar_coil.center_keepout_width_x_mm" }
+op = "<"
+rhs = { path = "modeled_objects.fr4_board.size_x_mm" }
+
+[[constraints.rules]]
+id = "fr4_center_hole_y_within_board"
+kind = "comparison"
+message = "FR4 center ferrite hole Y size must be smaller than the board"
+enabled = true
+lhs = { path = "modeled_objects.primary_planar_coil.center_keepout_height_y_mm" }
+op = "<"
+rhs = { path = "modeled_objects.fr4_board.size_y_mm" }
+
+# loops_per_layer =
+#   ceil(modeled_objects.primary_planar_coil.turns
+#        / modeled_objects.primary_planar_coil.layer_count)
+#
+# primary_planar_radial_build_<axis>() =
+#   inner_clearance_<axis>
+#   + loops_per_layer * trace_width
+#   + (loops_per_layer - 1) * turn_gap_<axis>
+
+[[constraints.rules]]
+id = "primary_layer_count_is_two"
+kind = "comparison"
+message = "Legacy primary planar construction requires exactly two copper layers"
+enabled = true
+lhs = { path = "modeled_objects.primary_planar_coil.layer_count" }
+op = "=="
+rhs = { value = 2 }
+
+[[constraints.rules]]
+id = "primary_turns_positive"
+kind = "comparison"
+message = "Primary planar construction requires at least two total series turns"
+enabled = true
+lhs = { path = "modeled_objects.primary_planar_coil.turns" }
+op = ">="
+rhs = { value = 2 }
+
+[[constraints.rules]]
+id = "primary_radial_build_x_within_window"
+kind = "comparison"
+message = "Primary X radial build must be strictly smaller than the legacy winding window"
+enabled = true
+lhs = { func = "primary_planar_radial_build_x(primary_planar_coil)" }
+op = "<"
+rhs = { path = "fixed_dimensions.legacy_winding_window_depth_mm" }
+
+[[constraints.rules]]
+id = "primary_radial_build_y_within_window"
+kind = "comparison"
+message = "Primary Y radial build must be strictly smaller than the legacy winding window"
+enabled = true
+lhs = { func = "primary_planar_radial_build_y(primary_planar_coil)" }
+op = "<"
+rhs = { path = "fixed_dimensions.legacy_winding_window_depth_mm" }
+
+[[constraints.rules]]
+id = "primary_lead_outside_outer_turn"
+kind = "comparison"
+message = "Positive-X lead extension must be longer than the primary X radial build"
+enabled = true
+lhs = { path = "modeled_objects.primary_planar_coil.lead_extension_x_mm" }
+op = ">"
+rhs = { func = "primary_planar_radial_build_x(primary_planar_coil)" }
+
+[[constraints.rules]]
+id = "primary_connector_ratio_positive"
+kind = "comparison"
+message = "Vertical connector diameter ratio must be positive"
+enabled = true
+lhs = { path = "modeled_objects.primary_planar_coil.connector_diameter_ratio_to_trace_width" }
+op = ">"
+rhs = { value = 0.0 }
+
+[[constraints.rules]]
+id = "primary_connector_ratio_not_wider_than_trace"
+kind = "comparison"
+message = "Vertical connector diameter must not exceed the primary trace width"
+enabled = true
+lhs = { path = "modeled_objects.primary_planar_coil.connector_diameter_ratio_to_trace_width" }
+op = "<="
+rhs = { value = 1.0 }
+
+[[constraints.rules]]
+id = "primary_connector_circle_segments_valid"
+kind = "comparison"
+message = "Circular connector requires at least three polygon segments"
+enabled = true
+lhs = { path = "modeled_objects.primary_planar_coil.connector_circle_segments" }
+op = ">="
+rhs = { value = 3 }
+
+[[constraints.rules]]
+id = "secondary_body_count_is_two"
+kind = "comparison"
+message = "Center-tap geometry requires exactly two secondary half-winding bodies"
+enabled = true
+lhs = { path = "modeled_objects.secondary_planar_coil.body_count" }
+op = "=="
+rhs = { value = 2 }
+
+[[constraints.rules]]
+id = "secondary_turns_positive"
+kind = "comparison"
+message = "Each secondary half-winding requires at least one turn"
+enabled = true
+lhs = { path = "modeled_objects.secondary_planar_coil.turns" }
+op = ">="
+rhs = { value = 1 }
+
+[[constraints.rules]]
+id = "secondary_layer_count_is_two"
+kind = "comparison"
+message = "Generalized secondary construction supports at most two copper layers"
+enabled = true
+lhs = { path = "modeled_objects.secondary_planar_coil.layer_count" }
+op = "=="
+rhs = { value = 2 }
+
+[[constraints.rules]]
+id = "secondary_preg_positive"
+kind = "comparison"
+message = "Secondary insulation gap must be positive"
+enabled = true
+lhs = { path = "modeled_objects.secondary_planar_coil.secondary_preg_mm" }
+op = ">"
+rhs = { value = 0.0 }
+
+[[constraints.rules]]
+id = "secondary_radial_build_x_within_window"
+kind = "comparison"
+message = "Secondary X radial build must be strictly smaller than the legacy winding window"
+enabled = true
+lhs = { func = "secondary_planar_radial_build_x(secondary_planar_coil)" }
+op = "<"
+rhs = { path = "fixed_dimensions.legacy_winding_window_depth_mm" }
+
+[[constraints.rules]]
+id = "secondary_radial_build_y_within_window"
+kind = "comparison"
+message = "Secondary Y radial build must be strictly smaller than the legacy winding window"
+enabled = true
+lhs = { func = "secondary_planar_radial_build_y(secondary_planar_coil)" }
+op = "<"
+rhs = { path = "fixed_dimensions.legacy_winding_window_depth_mm" }
+
+[[constraints.rules]]
+id = "secondary_lead_outside_outer_turn"
+kind = "comparison"
+message = "Negative-X secondary lead extension must exceed the X radial build"
+enabled = true
+lhs = { path = "modeled_objects.secondary_planar_coil.lead_extension_x_mm" }
+op = ">"
+rhs = { func = "secondary_planar_radial_build_x(secondary_planar_coil)" }
+
+[[constraints.rules]]
+id = "secondary_copper_within_fr4_x"
+kind = "comparison"
+message = "Secondary copper X extent must remain within the FR4 outline"
+enabled = true
+lhs = { func = "secondary_planar_bbox_size_x(secondary_planar_coil)" }
+op = "<="
+rhs = { path = "modeled_objects.fr4_board.size_x_mm" }
+
+[[constraints.rules]]
+id = "secondary_copper_within_fr4_y"
+kind = "comparison"
+message = "Secondary copper Y extent must remain within the FR4 outline"
+enabled = true
+lhs = { func = "secondary_planar_bbox_size_y(secondary_planar_coil)" }
+op = "<="
+rhs = { path = "modeled_objects.fr4_board.size_y_mm" }
