@@ -13,7 +13,7 @@ peetsfea는 TOML 명세에서 SSW 코일 설계를 결정적으로 생성하고,
 영문 문서는 [README.en.md](README.en.md)를 참고하세요.
 
 ## 현재 계약
-- LGE 릴리스 라벨: `lge-0.1.0` (`project.version = "0.1.0+lge"`는 동일 라벨의 PEP 440 호환 표기)
+- LGE 릴리스 라벨: `0.5.0-lge.0` (`project.version = "0.5.0+lge.0"`는 동일 라벨의 PEP 440 호환 표기)
 - 설계 공간 SSOT: 패키지 데이터 `src/peetsfea/data/0.3.x_sweep.toml` (`DEFAULT_REFERENCE_TOML_PATH`). 정규 fixed 점은 `src/peetsfea/data/0.3.x_fixed.toml` (`DEFAULT_SOURCE_TOML_PATH`). 둘 다 wheel에 동봉되어 설치 환경에서도 해석됩니다.
 - TOML surface: `[design]` · `[backend]` · `[fixed_dimensions]` · `[[modeled_objects]]`(tx/rx/under coil) · `[ferrite]` · `[constraints]`.
 - 제약: TX/RX SSW coil은 enabled 고정이며 `gcd(turn_n_int, twist_factor) == 1`, RX `turn_n_int > 1`, TX/RX `void_profile`은 scaled void profile `1`로 고정.
@@ -27,8 +27,8 @@ peetsfea는 TOML 명세에서 SSW 코일 설계를 결정적으로 생성하고,
 테스트는 `run/`에서 실행합니다.
 
 프로젝트 환경은 Miniconda와 분리된 `uv` 프로젝트 `.venv`에서 시스템 CPython
-`3.14.4` 및 PyAEDT `1.3.0`을 사용합니다. 배포 버전 `0.1.0+lge`는 요청한
-릴리스 라벨 `lge-0.1.0`의 PEP 440 호환 표기이며,
+`3.14.4` 및 PyAEDT `1.3.0`을 사용합니다. 배포 버전 `0.5.0+lge.0`은 요청한
+릴리스 라벨 `0.5.0-lge.0`의 PEP 440 호환 표기이며,
 `peetsfea.__version__`은 원래 라벨을 그대로 반환합니다.
 
 ```bash

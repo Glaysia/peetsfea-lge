@@ -1,7 +1,7 @@
 [project]
 name = "peetsfea-lge"
-# PEP 440 equivalent of the requested release label "lge-0.1.0".
-version = "0.1.0+lge"
+# PEP 440 equivalent of the requested release label "0.5.0-lge.0".
+version = "0.5.0+lge.0"
 description = "Minimal STEP-based two-port HFSS baseline."
 readme = "README.md"
 requires-python = "==3.14.4"
